@@ -1,0 +1,133 @@
+import { notFound } from "next/navigation";
+import { db } from "@/lib/firebase";
+import { MenuDisplay } from "@/components/menu-display";
+import type { User, MenuItem, Category, Brand } from "@/types/menu";
+import { ref, query, orderByChild, equalTo, get } from "firebase/database";
+import { Metadata } from "next";
+
+interface UserMenuPageProps {
+  params: Promise<{
+    username: string;
+  }>;
+}
+
+async function getUserByUsername(username: string): Promise<User | null> {
+  try {
+    const usersRef = ref(db, "users");
+    const usersQuery = query(
+      usersRef,
+      orderByChild("username"),
+      equalTo(username)
+    );
+    const snapshot = await get(usersQuery);
+
+    if (!snapshot.exists()) {
+      return null;
+    }
+
+    let user: User | null = null;
+    snapshot.forEach((childSnap) => {
+      user = { id: childSnap.key!, ...childSnap.val() } as User;
+    });
+
+    return user;
+  } catch (error) {
+    console.error("Error fetching user by username:", error);
+    return null;
+  }
+}
+
+async function getUserMenuData(userId: string) {
+  try {
+    // Fetch menu items
+    const itemsRef = ref(db, "menuItems");
+    const itemsQuery = query(itemsRef, orderByChild("userId"), equalTo(userId));
+    const itemsSnapshot = await get(itemsQuery);
+
+    let menuItems: MenuItem[] = [];
+    if (itemsSnapshot.exists()) {
+      itemsSnapshot.forEach((snap) => {
+        const data = snap.val();
+        if (data.available) {
+          menuItems.push({ id: snap.key!, ...data });
+        }
+      });
+
+      menuItems.sort((a, b) =>
+        (b.createdAt || "").localeCompare(a.createdAt || "")
+      );
+    }
+
+    // Fetch categories
+    const categoriesRef = ref(db, "categories");
+    const categoriesQuery = query(
+      categoriesRef,
+      orderByChild("userId"),
+      equalTo(userId)
+    );
+    const categoriesSnapshot = await get(categoriesQuery);
+
+    let categories: Category[] = [];
+    if (categoriesSnapshot.exists()) {
+      categoriesSnapshot.forEach((snap) => {
+        categories.push({ id: snap.key!, ...snap.val() });
+      });
+
+      categories.sort((a, b) => a.order - b.order);
+    }
+
+    // Fetch brand
+    const brandRef = ref(db, `brands/${userId}`);
+    const brandSnap = await get(brandRef);
+
+    const brand = brandSnap.exists() ? (brandSnap.val() as Brand) : null;
+
+    return { menuItems, categories, brand };
+  } catch (error) {
+    console.error("Error fetching menu data:", error);
+    return { menuItems: [], categories: [], brand: null };
+  }
+}
+
+export default async function UserMenuPage(props: UserMenuPageProps) {
+  const { username } = await props.params;
+
+  const user = await getUserByUsername(username);
+
+  if (!user) {
+    notFound();
+  }
+
+  const { menuItems, categories, brand } = await getUserMenuData(user.id);
+
+  return (
+    <MenuDisplay
+      user={user}
+      menuItems={menuItems}
+      categories={categories}
+      brand={brand}
+    />
+  );
+}
+
+export async function generateMetadata({
+  params,
+}: UserMenuPageProps): Promise<Metadata> {
+  const { username } = await params;
+
+  const user = await getUserByUsername(username);
+
+  if (!user) {
+    return {
+      title: "Menu Not Found",
+    };
+  }
+
+  const { brand } = await getUserMenuData(user.id);
+  const restaurantName = brand?.name || user.email.split("@")[0];
+
+  return {
+    title: `${restaurantName} - Digital Menu`,
+    description: `View the digital menu for ${restaurantName}. Browse our delicious offerings and place your order.`,
+  };
+}
