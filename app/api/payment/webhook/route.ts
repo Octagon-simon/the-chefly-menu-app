@@ -1,6 +1,6 @@
 import { type NextRequest, NextResponse } from "next/server";
-import { paystack } from "@/lib/paystack";
 import { upgradeUserToPro } from "../../lib/subscription";
+import { paystack } from "../../lib/paystack";
 
 export async function POST(request: NextRequest) {
   try {
@@ -27,11 +27,7 @@ export async function POST(request: NextRequest) {
         const { userId, plan } = metadata;
 
         // Upgrade user subscription
-        await upgradeUserToPro(
-          userId,
-          plan as "monthly" | "yearly",
-          reference
-        );
+        await upgradeUserToPro(userId, plan as "monthly" | "yearly", reference);
       }
     }
 

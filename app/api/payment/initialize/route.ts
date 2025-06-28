@@ -1,7 +1,7 @@
 import { type NextRequest, NextResponse } from "next/server"
-import { paystack } from "@/lib/paystack"
 import { auth } from "firebase-admin"
 import { initializeApp, getApps, cert } from "firebase-admin/app"
+import { paystack } from "../../lib/paystack"
 
 // Initialize Firebase Admin
 if (!getApps().length) {
