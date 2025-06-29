@@ -6,45 +6,43 @@ import { ref, query, orderByChild, equalTo, get } from "firebase/database";
 import { Metadata } from "next";
 
 interface UserMenuPageProps {
-  params: Promise<{
+  params: {
     username: string;
-  }>;
+  };
 }
 
 async function getUserByUsername(username: string): Promise<User | null> {
-  try {
-    const usersRef = ref(db, "users");
-    const usersQuery = query(
-      usersRef,
-      orderByChild("username"),
-      equalTo(username)
-    );
-    const snapshot = await get(usersQuery);
+  const usersRef = ref(db, "users");
+  const usersQuery = query(
+    usersRef,
+    orderByChild("username"),
+    equalTo(username)
+  );
+  const snapshot = await get(usersQuery);
 
-    if (!snapshot.exists()) {
-      return null;
-    }
+  if (!snapshot.exists()) return null;
 
-    let user: User | null = null;
-    snapshot.forEach((childSnap) => {
-      user = { id: childSnap.key!, ...childSnap.val() } as User;
-    });
+  let user: User | null = null;
+  snapshot.forEach((childSnap) => {
+    user = { id: childSnap.key!, ...childSnap.val() } as User;
+  });
 
-    return user;
-  } catch (error) {
-    console.error("Error fetching user by username:", error);
-    return null;
-  }
+  return user;
 }
 
 async function getUserMenuData(userId: string) {
   try {
-    // Fetch menu items
-    const itemsRef = ref(db, "menuItems");
-    const itemsQuery = query(itemsRef, orderByChild("userId"), equalTo(userId));
-    const itemsSnapshot = await get(itemsQuery);
+    // Fetch all data in parallel
+    const [itemsSnapshot, categoriesSnapshot, brandSnap] = await Promise.all([
+      get(query(ref(db, "menuItems"), orderByChild("userId"), equalTo(userId))),
+      get(
+        query(ref(db, "categories"), orderByChild("userId"), equalTo(userId))
+      ),
+      get(ref(db, `brands/${userId}`)),
+    ]);
 
-    let menuItems: MenuItem[] = [];
+    // Process menu items
+    const menuItems: MenuItem[] = [];
     if (itemsSnapshot.exists()) {
       itemsSnapshot.forEach((snap) => {
         const data = snap.val();
@@ -52,34 +50,21 @@ async function getUserMenuData(userId: string) {
           menuItems.push({ id: snap.key!, ...data });
         }
       });
-
       menuItems.sort((a, b) =>
         (b.createdAt || "").localeCompare(a.createdAt || "")
       );
     }
 
-    // Fetch categories
-    const categoriesRef = ref(db, "categories");
-    const categoriesQuery = query(
-      categoriesRef,
-      orderByChild("userId"),
-      equalTo(userId)
-    );
-    const categoriesSnapshot = await get(categoriesQuery);
-
-    let categories: Category[] = [];
+    // Process categories
+    const categories: Category[] = [];
     if (categoriesSnapshot.exists()) {
       categoriesSnapshot.forEach((snap) => {
         categories.push({ id: snap.key!, ...snap.val() });
       });
-
       categories.sort((a, b) => a.order - b.order);
     }
 
-    // Fetch brand
-    const brandRef = ref(db, `brands/${userId}`);
-    const brandSnap = await get(brandRef);
-
+    // Process brand
     const brand = brandSnap.exists() ? (brandSnap.val() as Brand) : null;
 
     return { menuItems, categories, brand };
@@ -89,14 +74,9 @@ async function getUserMenuData(userId: string) {
   }
 }
 
-export default async function UserMenuPage(props: UserMenuPageProps) {
-  const { username } = await props.params;
-
-  const user = await getUserByUsername(username);
-
-  if (!user) {
-    notFound();
-  }
+export default async function UserMenuPage({ params }: UserMenuPageProps) {
+  const user = await getUserByUsername(params.username);
+  if (!user) notFound();
 
   const { menuItems, categories, brand } = await getUserMenuData(user.id);
 
@@ -113,17 +93,12 @@ export default async function UserMenuPage(props: UserMenuPageProps) {
 export async function generateMetadata({
   params,
 }: UserMenuPageProps): Promise<Metadata> {
-  const { username } = await params;
+  const user = await getUserByUsername(params.username);
+  if (!user) return { title: "Menu Not Found" };
 
-  const user = await getUserByUsername(username);
-
-  if (!user) {
-    return {
-      title: "Menu Not Found",
-    };
-  }
-
-  const { brand } = await getUserMenuData(user.id);
+  // Only fetch brand data for metadata to reduce load
+  const brandSnap = await get(ref(db, `brands/${user.id}`));
+  const brand = brandSnap.exists() ? (brandSnap.val() as Brand) : null;
   const restaurantName = brand?.name || user.email.split("@")[0];
 
   return {
