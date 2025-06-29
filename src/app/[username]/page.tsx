@@ -6,9 +6,9 @@ import { ref, query, orderByChild, equalTo, get } from "firebase/database";
 import { Metadata } from "next";
 
 interface UserMenuPageProps {
-  params: {
+  params: Promise<{
     username: string;
-  };
+  }>;
 }
 
 async function getUserByUsername(username: string): Promise<User | null> {
@@ -74,7 +74,8 @@ async function getUserMenuData(userId: string) {
   }
 }
 
-export default async function UserMenuPage({ params }: UserMenuPageProps) {
+export default async function UserMenuPage(props: UserMenuPageProps) {
+  const params = await props.params;
   const user = await getUserByUsername(params.username);
   if (!user) notFound();
 
@@ -90,9 +91,8 @@ export default async function UserMenuPage({ params }: UserMenuPageProps) {
   );
 }
 
-export async function generateMetadata({
-  params,
-}: UserMenuPageProps): Promise<Metadata> {
+export async function generateMetadata(props: UserMenuPageProps): Promise<Metadata> {
+  const params = await props.params;
   const user = await getUserByUsername(params.username);
   if (!user) return { title: "Menu Not Found" };
 

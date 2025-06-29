@@ -46,16 +46,16 @@ export const MenuDisplay = ({
         className="bg-white shadow-sm border-b"
         style={{ borderBottomColor: primaryColor }}
       >
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between items-center h-16">
+        <div className="max-w-7xl mx-auto px-2 sm:px-6 lg:px-8 py-2 sm:py-4">
+          <div className="flex justify-between items-center h-16 gap-3">
             <div className="flex items-center gap-3">
               {brand?.logo ? (
                 <Image
-                  width={50}
-                  height={50}
                   src={brand.logo || "/placeholder.svg"}
                   alt={restaurantName}
-                  className="object-contain"
+                  width={50}
+                  height={50}
+                  className="w-50 h-50 sm:w-20 sm:h-20 md:w-24 md:h-24 object-contain"
                 />
               ) : (
                 <Image
@@ -66,12 +66,14 @@ export const MenuDisplay = ({
                   className="object-contain"
                 />
               )}
-              <div>
-                <h1 className="text-2xl font-bold text-gray-900">
+              <div className="">
+                <h1 className="text-md sm:text-2xl font-bold text-gray-900">
                   {restaurantName}
                 </h1>
                 {brand?.description && (
-                  <p className="text-sm text-gray-600">{brand.description}</p>
+                  <p className="text-xs sm:text-sm text-gray-600 line-clamp-2">
+                    {brand.description}
+                  </p>
                 )}
               </div>
             </div>
@@ -81,13 +83,13 @@ export const MenuDisplay = ({
               </div>
             ) : (
               <>
-                <button
+                <Button
                   onClick={() => setShowQR(!showQR)}
-                  className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+                  className={`flex items-center gap-2 px-4 py-2`}
                 >
                   <QrCode size={20} />
                   QR Code
-                </button>
+                </Button>
               </>
             )}
           </div>
