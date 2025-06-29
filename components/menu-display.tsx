@@ -5,9 +5,10 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { formatPrice } from "@/lib/utils";
-import { ChevronLeft, ChevronRight } from "lucide-react";
+import { ChevronLeft, ChevronRight, QrCode } from "lucide-react";
 import type { User, MenuItem, Category, Brand } from "@/types/menu";
 import Image from "next/image";
+import { QRCodeComponent } from "./qr-code";
 
 interface MenuDisplayProps {
   user: User;
@@ -24,6 +25,7 @@ export const MenuDisplay = ({
 }: MenuDisplayProps) => {
   const [selectedCategory, setSelectedCategory] = useState<string>("All");
   const [selectedItem, setSelectedItem] = useState<MenuItem | null>(null);
+  const [showQR, setShowQR] = useState(false);
 
   const restaurantName = brand?.name
     ? brand.name.charAt(0).toUpperCase() + brand.name.slice(1)
@@ -53,7 +55,7 @@ export const MenuDisplay = ({
                   height={50}
                   src={brand.logo || "/placeholder.svg"}
                   alt={restaurantName}
-                  className="h-10 w-10 object-contain"
+                  className="object-contain"
                 />
               ) : (
                 <Image
@@ -61,7 +63,7 @@ export const MenuDisplay = ({
                   alt={"Cheflymenu.app"}
                   width={60}
                   height={60}
-                  className="h-10 w-10 object-contain"
+                  className="object-contain"
                 />
               )}
               <div>
@@ -73,16 +75,44 @@ export const MenuDisplay = ({
                 )}
               </div>
             </div>
-            {user?.subscription.plan === "free" && (
+            {user?.subscription.plan === "free" ? (
               <div className="text-xs text-gray-500">
                 Powered by <span className="font-semibold">Chefly Menu</span>
               </div>
+            ) : (
+              <>
+                <button
+                  onClick={() => setShowQR(!showQR)}
+                  className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+                >
+                  <QrCode size={20} />
+                  QR Code
+                </button>
+              </>
             )}
           </div>
         </div>
       </header>
 
       <div className="max-w-4xl mx-auto px-4 py-8">
+        {/* QR Code Modal */}
+        {showQR && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+            <div className="bg-white p-8 rounded-lg max-w-sm w-full mx-4">
+              <div className="text-center mb-4">
+                <h3 className="text-lg font-semibold">Share Our Menu</h3>
+              </div>
+              <QRCodeComponent value={window.location.href} />
+              <button
+                onClick={() => setShowQR(false)}
+                className="w-full mt-4 px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700"
+              >
+                Close
+              </button>
+            </div>
+          </div>
+        )}
+
         {/* Category Filter */}
         {categories.length > 0 && (
           <div className="mb-8">
