@@ -91,18 +91,44 @@ export default async function UserMenuPage(props: UserMenuPageProps) {
   );
 }
 
-export async function generateMetadata(props: UserMenuPageProps): Promise<Metadata> {
+export async function generateMetadata(
+  props: UserMenuPageProps
+): Promise<Metadata> {
   const params = await props.params;
   const user = await getUserByUsername(params.username);
   if (!user) return { title: "Menu Not Found" };
 
-  // Only fetch brand data for metadata to reduce load
   const brandSnap = await get(ref(db, `brands/${user.id}`));
   const brand = brandSnap.exists() ? (brandSnap.val() as Brand) : null;
   const restaurantName = brand?.name || user.email.split("@")[0];
+  const description =
+    brand?.description ||
+    `View the digital menu for ${restaurantName}. Browse our delicious offerings and place your order.`;
+  const logoUrl =
+    brand?.logo || `${process.env.NEXT_PUBLIC_APP_URL + "/cheflymenuapp.png"}`;
 
   return {
     title: `${restaurantName} - Digital Menu`,
-    description: `View the digital menu for ${restaurantName}. Browse our delicious offerings and place your order.`,
+    description,
+    openGraph: {
+      title: `${restaurantName} - Digital Menu`,
+      description,
+      images: logoUrl
+        ? [
+            {
+              url: logoUrl,
+              width: 800,
+              height: 600,
+              alt: `${restaurantName} Logo`,
+            },
+          ]
+        : [],
+    },
+    twitter: {
+      card: "summary_large_image",
+      title: `${restaurantName} - Digital Menu`,
+      description,
+      images: logoUrl ? [logoUrl] : [],
+    },
   };
 }
