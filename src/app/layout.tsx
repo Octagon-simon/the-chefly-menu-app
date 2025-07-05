@@ -15,7 +15,7 @@ export const metadata: Metadata = {
       "Create beautiful digital menus for your restaurant with QR codes",
     images: [
       {
-        url: "/og-image.png",
+        url: `${process.env.NEXT_PUBLIC_APP_URL + "/og-image.png"}`,
         width: 1200,
         height: 630,
         alt: "Chefly Menu preview",
@@ -27,7 +27,7 @@ export const metadata: Metadata = {
     title: "Chefly Menu - Digital Restaurant Menu",
     description:
       "Create beautiful digital menus for your restaurant with QR codes",
-    images: ["/og-image.png"],
+    images: [`${process.env.NEXT_PUBLIC_APP_URL + "/og-image.png"}`],
   },
 };
 
