@@ -95,6 +95,10 @@ export class PaystackService {
       userId: string;
       plan: string;
       email: string;
+      promoCode?: string | null;
+      discount?: number;
+      originalAmount?: number;
+      finalAmount?: number;
     };
   }): Promise<PaystackInitializeResponse> {
     return this.makeRequest("/transaction/initialize", {

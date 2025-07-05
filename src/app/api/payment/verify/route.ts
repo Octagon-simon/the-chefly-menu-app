@@ -1,6 +1,6 @@
 import { type NextRequest, NextResponse } from "next/server";
-import { upgradeUserToPro } from "../../lib/subscription";
 import { paystack } from "../../lib/paystack";
+import { upgradeUserToPro } from "../../lib/subscription";
 
 export async function POST(request: NextRequest) {
   try {

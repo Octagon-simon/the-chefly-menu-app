@@ -42,12 +42,75 @@ export default function UpgradePage() {
   const { user, loading } = useAuth();
   const router = useRouter();
   const [processingPlan, setProcessingPlan] = useState<string | null>(null);
+  const [promoCode, setPromoCode] = useState("");
+  const [promoDiscount, setPromoDiscount] = useState(0);
+  const [promoLoading, setPromoLoading] = useState(false);
+  const [promoError, setPromoError] = useState("");
+  const [promoApplied, setPromoApplied] = useState(false);
 
   const formatPrice = (amount: number) => {
     return new Intl.NumberFormat("en-NG", {
       style: "currency",
       currency: "NGN",
     }).format(amount);
+  };
+
+  const validatePromoCode = async (code: string) => {
+    if (!code.trim()) {
+      setPromoError("Please enter a promo code");
+      return;
+    }
+
+    setPromoLoading(true);
+    setPromoError("");
+
+    try {
+      const { getDatabase, ref, get } = await import("firebase/database");
+      const db = getDatabase();
+      const promoRef = ref(db, `promos/${code.toLowerCase()}`);
+      const snapshot = await get(promoRef);
+
+      if (!snapshot.exists()) {
+        setPromoError("Invalid promo code");
+        setPromoLoading(false);
+        return;
+      }
+
+      const promoData = snapshot.val();
+      const now = new Date();
+      const expiryDate = new Date(promoData.expiry);
+
+      if (now > expiryDate) {
+        setPromoError("This promo code has expired");
+        setPromoLoading(false);
+        return;
+      }
+
+      // Apply discount
+      setPromoDiscount(promoData.discount);
+      setPromoApplied(true);
+      setPromoError("");
+      toast.success(`Promo code applied! ${promoData.discount}% discount`);
+    } catch (error) {
+      console.error("Error validating promo code:", error);
+      setPromoError("Failed to validate promo code");
+    } finally {
+      setPromoLoading(false);
+    }
+  };
+
+  const removePromoCode = () => {
+    setPromoCode("");
+    setPromoDiscount(0);
+    setPromoApplied(false);
+    setPromoError("");
+  };
+
+  const calculateDiscountedPrice = (originalPrice: number) => {
+    if (promoDiscount > 0) {
+      return originalPrice - (originalPrice * promoDiscount) / 100;
+    }
+    return originalPrice;
   };
 
   const handleUpgrade = async (planId: string) => {
@@ -78,6 +141,8 @@ export default function UpgradePage() {
         body: JSON.stringify({
           plan: planId,
           idToken,
+          promoCode: promoApplied ? promoCode : null,
+          discount: promoDiscount,
         }),
       });
 
@@ -141,6 +206,16 @@ export default function UpgradePage() {
     );
   }
 
+  const plansWithDiscount = plans.map((plan) => ({
+    ...plan,
+    originalPrice: plan.price,
+    discountedPrice: calculateDiscountedPrice(plan.price),
+    savings:
+      promoDiscount > 0
+        ? plan.price - calculateDiscountedPrice(plan.price)
+        : plan.savings,
+  }));
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-orange-50 to-red-50 py-12">
       <div className="container mx-auto px-4">
@@ -178,9 +253,67 @@ export default function UpgradePage() {
             </div>
           </div>
 
+          {/* Promo Code Section */}
+          <div className="mb-8 max-w-md mx-auto">
+            <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+              <h3 className="font-semibold text-gray-900 mb-4">
+                Have a promo code?
+              </h3>
+
+              {!promoApplied ? (
+                <div className="space-y-4">
+                  <div className="flex gap-2">
+                    <input
+                      type="text"
+                      value={promoCode}
+                      onChange={(e) =>
+                        setPromoCode(e.target.value.toUpperCase())
+                      }
+                      placeholder="Enter promo code"
+                      className="flex-1 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent"
+                      disabled={promoLoading}
+                    />
+                    <Button
+                      onClick={() => validatePromoCode(promoCode)}
+                      disabled={promoLoading || !promoCode.trim()}
+                      className="bg-orange-500 hover:bg-orange-600"
+                    >
+                      {promoLoading ? "Checking..." : "Apply"}
+                    </Button>
+                  </div>
+
+                  {promoError && (
+                    <p className="text-red-600 text-sm">{promoError}</p>
+                  )}
+                </div>
+              ) : (
+                <div className="bg-green-50 border border-green-200 rounded-lg p-4">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-green-800 font-medium">
+                        Promo code "{promoCode}" applied!
+                      </p>
+                      <p className="text-green-600 text-sm">
+                        {promoDiscount}% discount on your subscription
+                      </p>
+                    </div>
+                    <Button
+                      onClick={removePromoCode}
+                      variant="outline"
+                      size="sm"
+                      className="text-green-700 border-green-300 hover:bg-green-100 bg-transparent"
+                    >
+                      Remove
+                    </Button>
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+
           {/* Pricing Cards */}
           <div className="grid md:grid-cols-2 gap-8 max-w-3xl mx-auto mb-12">
-            {plans.map((plan) => (
+            {plansWithDiscount.map((plan) => (
               <Card
                 key={plan.id}
                 className={`relative flex flex-col justify-around border-2 transition-all hover:shadow-lg ${
@@ -207,12 +340,30 @@ export default function UpgradePage() {
                   </CardDescription>
 
                   <div className="mt-6">
-                    <div className="text-4xl font-bold">
-                      ₦{plan.price.toLocaleString()}
-                    </div>
+                    {promoApplied && promoDiscount > 0 ? (
+                      <div>
+                        <div className="text-2xl text-gray-500 line-through">
+                          ₦{plan.originalPrice.toLocaleString()}
+                        </div>
+                        <div className="text-4xl font-bold text-green-600">
+                          ₦{plan.discountedPrice.toLocaleString()}
+                        </div>
+                        <div className="text-green-600 font-semibold text-sm">
+                          Save ₦
+                          {(
+                            plan.originalPrice - plan.discountedPrice
+                          ).toLocaleString()}{" "}
+                          with {promoCode}
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="text-4xl font-bold">
+                        ₦{plan.price.toLocaleString()}
+                      </div>
+                    )}
                     <div className="text-gray-600">per {plan.period}</div>
 
-                    {plan.savings && (
+                    {plan.savings && !promoApplied && (
                       <div className="mt-2">
                         <span className="text-green-600 font-semibold text-sm bg-green-50 px-3 py-1 rounded-full">
                           Save ₦{plan.savings.toLocaleString()}
@@ -222,7 +373,11 @@ export default function UpgradePage() {
 
                     {plan.period === "year" && (
                       <p className="text-sm text-gray-500 mt-2">
-                        Just ₦{Math.round(plan.price / 12).toLocaleString()}
+                        Just ₦
+                        {Math.round(
+                          (promoApplied ? plan.discountedPrice : plan.price) /
+                            12
+                        ).toLocaleString()}
                         /month
                       </p>
                     )}
@@ -251,9 +406,7 @@ export default function UpgradePage() {
                     }`}
                   >
                     {processingPlan === plan.id ? (
-                      <>
-                        Processing...
-                      </>
+                      <>Processing...</>
                     ) : (
                       `Choose ${plan.name}`
                     )}

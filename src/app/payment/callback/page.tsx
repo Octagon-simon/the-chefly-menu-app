@@ -149,7 +149,6 @@ export default function PaymentCallbackPage() {
                 <li>✅ Multiple images per item</li>
                 <li>✅ Custom branding</li>
                 <li>✅ QR code generation</li>
-                <li>✅ Analytics dashboard</li>
                 <li>✅ Priority support</li>
               </ul>
             </div>
