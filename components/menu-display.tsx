@@ -6,12 +6,12 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { formatPrice } from "@/lib/utils";
 import { ChevronLeft, ChevronRight, QrCode } from "lucide-react";
-import type { User, MenuItem, Category, Brand } from "@/types/menu";
+import type { MenuItem, Category, Brand } from "@/types/menu";
 import Image from "next/image";
 import { QRCodeComponent } from "./qr-code";
 
 interface MenuDisplayProps {
-  user: User;
+  user: { id: string; username: string; subscription: { plan: string } };
   menuItems: MenuItem[];
   categories: Category[];
   brand: Brand | null;

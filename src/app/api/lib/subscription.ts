@@ -24,6 +24,7 @@ export async function upgradeUserToPro(
   try {
     const db = getDatabase();
     const userRef = db.ref(`users/${userId}`);
+    const publicUserRef = db.ref(`userPublic/${userId}`);
     const userSnap = await userRef.get();
 
     if (!userSnap.exists()) throw new Error("User not found");
@@ -47,9 +48,15 @@ export async function upgradeUserToPro(
       updatedAt: now.toISOString(),
     };
 
+    //update private user document
     await userRef.update({
       subscription: updatedSubscription,
       updatedAt: now.toISOString(),
+    });
+
+    //update public user document
+    await publicUserRef.update({
+      subscription: { plan: updatedSubscription.plan },
     });
 
     const paymentRef = db.ref(`payments/${paymentReference}`);

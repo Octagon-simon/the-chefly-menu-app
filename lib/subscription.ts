@@ -1,6 +1,6 @@
 import type { User, UserSubscription } from "@/types/menu";
-import { db } from "./firebase"; // ✅ client-side firebase (modular SDK)
-import { ref, get, update } from "firebase/database"; // ✅ import modular RTDB functions
+import { db } from "./firebase";
+import { ref, get, update } from "firebase/database";
 
 export interface SubscriptionPlan {
   id: string;
@@ -47,7 +47,7 @@ export class SubscriptionService {
     userId: string
   ): Promise<"free" | "pro" | "expired"> {
     try {
-      const userRef = ref(db, `users/${userId}`); // ✅ modular ref
+      const userRef = ref(db, `users/${userId}`);
       const userSnap = await get(userRef);
 
       if (!userSnap.exists()) return "free";
@@ -72,6 +72,7 @@ export class SubscriptionService {
   static async downgradeToFree(userId: string): Promise<void> {
     try {
       const userRef = ref(db, `users/${userId}`);
+      const publicUserRef = ref(db, `userPublic/${userId}`);
       const userSnap = await get(userRef);
 
       if (!userSnap.exists()) return;
@@ -87,9 +88,15 @@ export class SubscriptionService {
         updatedAt: now.toISOString(),
       };
 
+      //update private user document
       await update(userRef, {
         subscription: updatedSubscription,
         updatedAt: now.toISOString(),
+      });
+
+      //update public user document
+      await update(publicUserRef, {
+        subscription: { plan: "free" },
       });
     } catch (error) {
       console.error("❌ Error downgrading to free:", error);

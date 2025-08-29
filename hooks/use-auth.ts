@@ -12,7 +12,7 @@ import {
 import { getDatabase, ref, get, set, update } from "firebase/database";
 import { auth } from "@/lib/firebase";
 import { generateRandomUsername, generateSlug } from "@/lib/utils";
-import type { User } from "@/types/menu";
+import type { User, UserSubscription } from "@/types/menu";
 
 export const useAuth = () => {
   const [user, setUser] = useState<User | null>(null);
@@ -26,6 +26,7 @@ export const useAuth = () => {
   ): Promise<User> => {
     try {
       const userRef = ref(db, `users/${firebaseUser.uid}`);
+      const publicUserRef = ref(db, `userPublic/${firebaseUser.uid}`);
       const snapshot = await get(userRef);
 
       if (snapshot.exists()) {
@@ -34,24 +35,35 @@ export const useAuth = () => {
 
       const username = generateRandomUsername();
       const now = new Date().toISOString();
-      const userData: User = {
-        id: firebaseUser.uid,
-        email: firebaseUser.email!,
-        username,
-        subscription: {
-          id: `sub_${firebaseUser.uid}`,
-          userId: firebaseUser.uid,
-          plan: "free",
-          status: "active",
-          startDate: now,
-          createdAt: now,
-          updatedAt: now,
-        },
+      const subscription: UserSubscription = {
+        id: `sub_${firebaseUser.uid}`,
+        userId: firebaseUser.uid,
+        plan: "free",
+        status: "active",
+        startDate: now,
         createdAt: now,
         updatedAt: now,
       };
 
+      const userData: User = {
+        id: firebaseUser.uid,
+        email: firebaseUser.email!,
+        username,
+        subscription,
+        createdAt: now,
+        updatedAt: now,
+      };
+
+      //write private user document
       await set(userRef, userData);
+
+      //write public user document (only expose username and maybe other public fields later)
+      await set(publicUserRef, {
+        username,
+        subscription: { plan: subscription.plan }, // expose only plan in public
+        createdAt: now,
+      });
+
       return userData;
     } catch (err) {
       console.error("❌ Realtime DB createUserDocument error:", err);
@@ -88,7 +100,7 @@ export const useAuth = () => {
           console.error("❌ useAuth AuthState error:", err);
           setUser(null);
           setError(
-            "We couldn’t load your account. Check your internet or try again."
+            "We couldn't load your account. Check your internet or try again."
           );
         }
       } else {
@@ -151,11 +163,18 @@ export const useAuth = () => {
     try {
       const slug = generateSlug(brandName);
       const userRef = ref(db, `users/${user.id}`);
+      const publicUserRef = ref(db, `userPublic/${user.id}`);
       const now = new Date().toISOString();
 
+      //update private user document
       await update(userRef, {
         username: slug,
         updatedAt: now,
+      });
+
+      //update public user document
+      await update(publicUserRef, {
+        username: slug,
       });
 
       setUser({ ...user, username: slug, updatedAt: now });

@@ -1,7 +1,7 @@
 import { notFound } from "next/navigation";
 import { db } from "@/lib/firebase";
 import { MenuDisplay } from "@/components/menu-display";
-import type { User, MenuItem, Category, Brand } from "@/types/menu";
+import type { MenuItem, Category, Brand } from "@/types/menu";
 import { ref, query, orderByChild, equalTo, get } from "firebase/database";
 import { Metadata } from "next";
 
@@ -11,10 +11,14 @@ interface UserMenuPageProps {
   }>;
 }
 
-async function getUserByUsername(username: string): Promise<User | null> {
-  const usersRef = ref(db, "users");
+async function getUserByUsername(username: string): Promise<{
+  id: string;
+  username: string;
+  subscription: { plan: string };
+} | null> {
+  const userPublicRef = ref(db, "userPublic");
   const usersQuery = query(
-    usersRef,
+    userPublicRef,
     orderByChild("username"),
     equalTo(username)
   );
@@ -22,9 +26,12 @@ async function getUserByUsername(username: string): Promise<User | null> {
 
   if (!snapshot.exists()) return null;
 
-  let user: User | null = null;
+  let user: { id: string; username: string } | null = null;
   snapshot.forEach((childSnap) => {
-    user = { id: childSnap.key!, ...childSnap.val() } as User;
+    user = { id: childSnap.key!, ...childSnap.val() } as {
+      id: string;
+      username: string;
+    };
   });
 
   return user;
@@ -100,7 +107,7 @@ export async function generateMetadata(
 
   const brandSnap = await get(ref(db, `brands/${user.id}`));
   const brand = brandSnap.exists() ? (brandSnap.val() as Brand) : null;
-  const restaurantName = brand?.name || user.email.split("@")[0];
+  const restaurantName = brand?.name || user?.username || "CheflyMenu User";
   const description =
     brand?.description ||
     `View the digital menu for ${restaurantName}. Browse our delicious offerings and place your order.`;

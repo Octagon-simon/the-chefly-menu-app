@@ -84,30 +84,6 @@ export const useMenu = () => {
     fetchMenuData();
   }, [user]);
 
-  // const addMenuItem = async (item: Omit<MenuItem, "id">) => {
-  //   if (!user) return { success: false, error: "No user found" };
-
-  //   try {
-  //     const now = new Date().toISOString();
-  //     const db = getDatabase();
-  //     const newItem = {
-  //       ...item,
-  //       userId: user.id,
-  //       createdAt: now,
-  //       updatedAt: now,
-  //     };
-
-  //     const newRef = push(ref(db, "menuItems"));
-  //     await set(newRef, newItem);
-
-  //     setMenuItems((prev) => [{ id: newRef.key!, ...newItem }, ...prev]);
-  //     return { success: true };
-  //   } catch (error: any) {
-  //     console.error("Error adding menu item:", error);
-  //     return { success: false, error: error.message };
-  //   }
-  // };
-
   const addMenuItem = async (item: Omit<MenuItem, "id">) => {
     if (!user) return { success: false, error: "No user found" };
 
@@ -135,7 +111,7 @@ export const useMenu = () => {
       if (user.subscription.plan === "free" && itemCount >= 5) {
         return {
           success: false,
-          error: "Free plan limit reached. Upgrade to Pro to add more items.",
+          error: "Free plan limit reached. Renew your subscription to add more items.",
         };
       }
 
