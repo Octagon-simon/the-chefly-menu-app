@@ -101,7 +101,7 @@ export const MenuDisplay = ({
                   className="w-12 h-12 sm:w-15 sm:h-15 object-cover rounded-full shadow-lg ring-2 ring-primary/20"
                 />
               </div>
-              <h1 className="text-lg sm:text-xl font-bold text-foreground">
+              <h1 className="text-xl sm:text-2xl font-bold text-foreground">
                 {restaurantName}
               </h1>
             </div>
