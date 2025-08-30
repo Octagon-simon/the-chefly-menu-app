@@ -31,10 +31,16 @@ import { useRouter } from "next/navigation";
 import { useSubscription } from "@/hooks/use-subscription";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
+import { formatText } from "@/lib/utils";
 
 export default function AdminPage() {
   const { user, loading: authLoading, logout } = useAuth();
-  const { isPro, isExpired, loading: subscriptionLoading } = useSubscription();
+  const {
+    isPro,
+    isExpired,
+    loading: subscriptionLoading,
+    hasSubscribedBefore,
+  } = useSubscription();
   const {
     menuItems,
     categories,
@@ -195,7 +201,7 @@ export default function AdminPage() {
                 View Menu
               </a>
               <span className="text-sm text-gray-600 max-w-[150px] truncate">
-                Welcome, {user.email}
+                Welcome, {formatText(user?.username)}
               </span>
               <button
                 onClick={handleLogout}
@@ -265,8 +271,37 @@ export default function AdminPage() {
           </div>
         )}
 
+        {/* Subscription Renewal Notification for Free Users with Limited Items */}
+        {!isPro && filteredItems.length > 5 && (
+          <div className="mb-4 sm:mb-6 p-4 bg-gradient-to-r from-amber-50 to-orange-50 border border-amber-200 rounded-xl shadow-sm">
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+              <div className="flex items-start gap-3">
+                <div className="w-10 h-10 bg-amber-100 rounded-full flex items-center justify-center flex-shrink-0">
+                  <Crown className="w-5 h-5 text-amber-600" />
+                </div>
+                <div>
+                  <h3 className="font-semibold text-amber-800 mb-1">
+                    Menu Items Limited
+                  </h3>
+                  <p className="text-sm text-amber-700">
+                    You have {filteredItems.length} menu items, but only 5 are
+                    visible to customers. Upgrade to Pro to display all your
+                    items and unlock premium features.
+                  </p>
+                </div>
+              </div>
+              <Button
+                onClick={handleUpgrade}
+                className="px-6 py-2 bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 text-white rounded-lg font-medium transition-all duration-200 shadow-md hover:shadow-lg whitespace-nowrap"
+              >
+                Upgrade Now
+              </Button>
+            </div>
+          </div>
+        )}
+
         {/* Free Plan Limit Warning */}
-        {!isPro && menuItems.length >= 4 && (
+        {!isPro && !hasSubscribedBefore && menuItems.length >= 4 && (
           <div className="mb-4 sm:mb-6 p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
             <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
               <div>

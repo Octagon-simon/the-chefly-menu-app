@@ -10,6 +10,7 @@ export const useSubscription = () => {
   const [subscription, setSubscription] = useState<UserSubscription | null>(
     null
   );
+  const [hasSubscribedBefore, setHasSubscribedBefore] = useState(false);
   const [loading, setLoading] = useState(true);
   const [status, setStatus] = useState<"active" | "expired" | "cancelled">(
     "cancelled"
@@ -28,6 +29,8 @@ export const useSubscription = () => {
 
         // Retrieve latest subscription data from Firebase
         const latestSub = user.subscription;
+        // Check if user has ever subscribed to a paid plan
+        setHasSubscribedBefore(!!user?.subscription?.startDate);
 
         // Update local state
         setSubscription(latestSub);
@@ -68,5 +71,6 @@ export const useSubscription = () => {
     isFree,
     isExpired: status === "expired",
     isCancelled: status === "cancelled",
+    hasSubscribedBefore
   };
 };

@@ -3,6 +3,7 @@ import type { Metadata } from "next";
 import "./globals.css";
 import { ToastContainer } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
+import { Suspense } from "react";
 
 export const metadata: Metadata = {
   title: "Chefly Menu - Digital Restaurant Menu",
@@ -38,13 +39,15 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en">
-      <body>
-        <ToastContainer
-          position="top-right"
-          autoClose={5000}
-          hideProgressBar={true}
-        />
-        {children}
+      <body className="font-sans antialiased">
+        <Suspense fallback={null}>
+          <ToastContainer
+            position="top-right"
+            autoClose={5000}
+            hideProgressBar={true}
+          />
+          {children}
+        </Suspense>
       </body>
     </html>
   );

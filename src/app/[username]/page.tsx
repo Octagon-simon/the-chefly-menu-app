@@ -4,6 +4,7 @@ import { MenuDisplay } from "@/components/menu-display";
 import type { MenuItem, Category, Brand } from "@/types/menu";
 import { ref, query, orderByChild, equalTo, get } from "firebase/database";
 import { Metadata } from "next";
+import { formatText } from "@/lib/utils";
 
 interface UserMenuPageProps {
   params: Promise<{
@@ -110,15 +111,17 @@ export async function generateMetadata(
   const restaurantName = brand?.name || user?.username || "CheflyMenu User";
   const description =
     brand?.description ||
-    `View the digital menu for ${restaurantName}. Browse our delicious offerings and place your order.`;
+    `View the digital menu for ${formatText(
+      restaurantName
+    )}. Browse our delicious offerings and place your order.`;
   const logoUrl =
     brand?.logo || `${process.env.NEXT_PUBLIC_APP_URL + "/cheflymenuapp.png"}`;
 
   return {
-    title: `${restaurantName} - Digital Menu`,
+    title: `${formatText(restaurantName)} - Digital Menu`,
     description,
     openGraph: {
-      title: `${restaurantName} - Digital Menu`,
+      title: `${formatText(restaurantName)} - Digital Menu`,
       description,
       images: logoUrl
         ? [
@@ -126,14 +129,14 @@ export async function generateMetadata(
               url: logoUrl,
               width: 800,
               height: 600,
-              alt: `${restaurantName} Logo`,
+              alt: `${formatText(restaurantName)} Logo`,
             },
           ]
         : [],
     },
     twitter: {
       card: "summary_large_image",
-      title: `${restaurantName} - Digital Menu`,
+      title: `${formatText(restaurantName)} - Digital Menu`,
       description,
       images: logoUrl ? [logoUrl] : [],
     },

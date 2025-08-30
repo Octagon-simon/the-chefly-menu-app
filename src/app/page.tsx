@@ -380,50 +380,42 @@ export default function HomePage() {
               <ul className="space-y-2 text-gray-400">
                 <li>
                   <a
-                    href="mailto:support@cheflymenu.app"
+                    href="mailto:octagonwebservices@gmail.com"
                     className="hover:text-white"
+                    target="_blank"
                   >
-                    Contact Us
-                  </a>
-                </li>
-                {/* <li>
-                  <a href="#" className="hover:text-white">
-                    Help Center
+                    Send us an email
                   </a>
                 </li>
                 <li>
-                  <a href="#" className="hover:text-white">
-                    Documentation
+                  <a
+                    href="https://instagram.com/cheflymenu?igsh=MXdweW81ZXR4NHZrcg%3D%3D&utm_source=qr"
+                    target="_blank"
+                    className="hover:text-white"
+                  >
+                    DM us on Instagram
                   </a>
-                </li> */}
+                </li>
               </ul>
             </div>
             <div>
               <h3 className="font-semibold mb-4">Legal</h3>
               <ul className="space-y-2 text-gray-400">
                 <li>
-                  <a href="#" className="hover:text-white">
+                  <a href="/privacy" className="hover:text-white">
                     Privacy Policy
                   </a>
                 </li>
                 <li>
-                  <a href="#" className="hover:text-white">
+                  <a href="/terms" className="hover:text-white">
                     Terms of Service
                   </a>
                 </li>
               </ul>
             </div>
-            {/*
-                <li>
-                  <a href="#" className="hover:text-white">
-                    Cookie Policy
-                  </a>
-                </li>
-              </ul>
-            </div> */}
           </div>
           <div className="border-t border-gray-800 mt-8 pt-8 text-center text-gray-400">
-            <p>&copy; 2024 CheflyMenu. All rights reserved.</p>
+            <p>&copy; 2025 CheflyMenu. All rights reserved.</p>
           </div>
         </div>
       </footer>
