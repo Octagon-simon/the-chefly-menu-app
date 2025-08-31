@@ -2,10 +2,7 @@
 
 import { Badge } from "@/components/ui/badge";
 import { Crown } from "lucide-react";
-
-interface SubscriptionBadgeProps {
-  plan: "free" | "pro";
-}
+import { SubscriptionBadgeProps } from "./types";
 
 export const SubscriptionBadge = ({ plan }: SubscriptionBadgeProps) => {
   const baseClasses =
