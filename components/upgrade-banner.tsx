@@ -1,18 +1,14 @@
-"use client"
+"use client";
 
-import { Crown, X } from "lucide-react"
-import { Button } from "@/components/ui/button"
-import { useState } from "react"
-
-interface UpgradeBannerProps {
-  message: string
-  onUpgrade: () => void
-}
+import { Crown, X } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { useState } from "react";
+import { UpgradeBannerProps } from "./types";
 
 export const UpgradeBanner = ({ message, onUpgrade }: UpgradeBannerProps) => {
-  const [dismissed, setDismissed] = useState(false)
+  const [dismissed, setDismissed] = useState(false);
 
-  if (dismissed) return null
+  if (dismissed) return null;
 
   return (
     <div className="bg-gradient-to-r from-yellow-400 to-yellow-500 text-white p-4 rounded-lg mb-6 relative">
@@ -33,11 +29,14 @@ export const UpgradeBanner = ({ message, onUpgrade }: UpgradeBannerProps) => {
           >
             Upgrade Now
           </Button>
-          <button onClick={() => setDismissed(true)} className="p-1 hover:bg-white hover:bg-opacity-20 rounded">
+          <button
+            onClick={() => setDismissed(true)}
+            className="p-1 hover:bg-white hover:bg-opacity-20 rounded"
+          >
             <X size={16} />
           </button>
         </div>
       </div>
     </div>
-  )
-}
+  );
+};

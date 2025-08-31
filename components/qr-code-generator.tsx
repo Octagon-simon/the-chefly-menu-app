@@ -7,11 +7,7 @@ import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Download, QrCode } from "lucide-react"
 import QRCodeLib from "qrcode"
-
-interface QRCodeGeneratorProps {
-  url: string
-  brandName: string
-}
+import { QRCodeGeneratorProps } from "./types"
 
 export const QRCodeGenerator = ({ url, brandName }: QRCodeGeneratorProps) => {
   const [qrCodeUrl, setQrCodeUrl] = useState<string>("")

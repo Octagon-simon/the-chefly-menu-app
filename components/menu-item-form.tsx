@@ -17,18 +17,9 @@ import {
 } from "@/components/ui/select";
 import { UpgradeBanner } from "@/components/upgrade-banner";
 import { X, Upload, Trash2 } from "lucide-react";
-import type { MenuItem, Category } from "@/types/menu";
 import { toast } from "react-toastify";
 import { useRouter } from "next/navigation";
-
-interface MenuItemFormProps {
-  item?: MenuItem;
-  categories: Category[];
-  onSubmit: (
-    item: Omit<MenuItem, "id">
-  ) => Promise<{ success: boolean; error?: string }>;
-  onCancel: () => void;
-}
+import { MenuItemFormProps } from "./types";
 
 export const MenuItemForm = ({
   item,

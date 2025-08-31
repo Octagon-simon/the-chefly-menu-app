@@ -1,0 +1,1 @@
+export const MENU_CACHE_DURATION = 10 * 60 * 1000; // 10 minutes

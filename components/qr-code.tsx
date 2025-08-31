@@ -2,11 +2,7 @@
 
 import { useEffect, useRef } from "react"
 import QRCode from "qrcode"
-
-interface QRCodeProps {
-  value: string
-  size?: number
-}
+import { QRCodeProps } from "./types"
 
 export const QRCodeComponent = ({ value, size = 200 }: QRCodeProps) => {
   const canvasRef = useRef<HTMLCanvasElement>(null)
