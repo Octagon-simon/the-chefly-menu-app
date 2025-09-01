@@ -4,9 +4,23 @@ import { unstable_cache } from "next/cache";
 import { User } from "@/types/menu";
 import { db } from "@/lib/firebase";
 
+const baseUrl = process.env.NEXT_PUBLIC_APP_URL || "https://cheflymenu.app";
+
 const staticRoutes: MetadataRoute.Sitemap = [
   {
-    url: process.env.NEXT_PUBLIC_APP_URL || "https://cheflymenu.app",
+    url: baseUrl,
+    lastModified: new Date(),
+    changeFrequency: "daily",
+    priority: 1,
+  },
+  {
+    url: `${baseUrl}/privacy`,
+    lastModified: new Date(),
+    changeFrequency: "daily",
+    priority: 1,
+  },
+  {
+    url: `${baseUrl}/terms`,
     lastModified: new Date(),
     changeFrequency: "daily",
     priority: 1,
@@ -38,10 +52,7 @@ async function fetchProUsers(db: any) {
   }
 }
 
-function generateUserRoutes(
-  proUsers: any[],
-  baseUrl: string
-): MetadataRoute.Sitemap {
+function generateUserRoutes(proUsers: any[]): MetadataRoute.Sitemap {
   const userRoutes: MetadataRoute.Sitemap = [];
 
   for (const userData of proUsers) {
@@ -58,8 +69,6 @@ function generateUserRoutes(
 
 const getCachedSitemap = unstable_cache(
   async (): Promise<MetadataRoute.Sitemap> => {
-    const baseUrl = process.env.NEXT_PUBLIC_APP_URL || "https://cheflymenu.app";
-
     try {
       const proUsers = await fetchProUsers(db);
 
@@ -67,7 +76,7 @@ const getCachedSitemap = unstable_cache(
         return staticRoutes;
       }
 
-      const userRoutes = generateUserRoutes(proUsers, baseUrl);
+      const userRoutes = generateUserRoutes(proUsers);
       const fullSitemap = [...staticRoutes, ...userRoutes];
 
       return fullSitemap;

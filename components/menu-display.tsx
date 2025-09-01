@@ -17,12 +17,9 @@ import {
 } from "lucide-react";
 import type { MenuItem } from "@/types/menu";
 import Image from "next/image";
-import { MenuCache } from "@/lib/menuCache";
 import type { ItemDetailModalProps, MenuDisplayProps } from "./types";
 import { debounce } from "lodash";
 import { QRCodeComponent } from "./qr-code";
-
-const menuCache = new MenuCache();
 
 export const MenuDisplay = ({
   user,
@@ -40,13 +37,6 @@ export const MenuDisplay = ({
   const searchContainerRef = useRef<HTMLDivElement>(null);
 
   const filteredItems = useMemo(() => {
-    const cacheKey = `${user.id}-${searchQuery}-${selectedCategory}`;
-    const cached = menuCache.get(cacheKey);
-
-    if (cached) {
-      return cached;
-    }
-
     const filtered = menuItems.filter((item) => {
       const matchesSearch =
         searchQuery === "" ||
@@ -62,15 +52,8 @@ export const MenuDisplay = ({
       return matchesSearch && matchesCategory;
     });
 
-    menuCache.set(cacheKey, filtered);
     return filtered;
-  }, [menuItems, searchQuery, selectedCategory, user.id]);
-
-  useEffect(() => {
-    return () => {
-      menuCache.destroy();
-    };
-  }, []);
+  }, [menuItems, searchQuery, selectedCategory]);
 
   const searchResults = useMemo(() => {
     if (debouncedSearchQuery === "") return [];
@@ -283,9 +266,11 @@ export const MenuDisplay = ({
                             <div className="flex items-center gap-3">
                               {item.images && item.images.length > 0 && (
                                 <div className="w-12 h-12 rounded-lg overflow-hidden flex-shrink-0">
-                                  <img
+                                  <Image
                                     src={item.images[0] || "/placeholder.svg"}
                                     alt={item.name}
+                                    width={12}
+                                    height={12}
                                     className="w-full h-full object-cover"
                                   />
                                 </div>
@@ -457,9 +442,10 @@ export const MenuDisplay = ({
                 <div className="lg:flex">
                   {item.images && item.images.length > 0 && (
                     <div className="lg:w-80 h-48 lg:h-56 relative overflow-hidden flex-shrink-0">
-                      <img
+                      <Image
                         src={item.images[0] || "/placeholder.svg"}
                         alt={item.name}
+                        fill
                         className="w-full h-full object-cover transition-transform duration-300 hover:scale-110"
                       />
                       {user.subscription.plan !== "free" &&
@@ -579,9 +565,10 @@ const ItemDetailModal = ({
         <CardContent className="p-0">
           {displayImages && displayImages.length > 0 && (
             <div className="relative h-56 md:h-64 border-b">
-              <img
+              <Image
                 src={displayImages[currentImageIndex] || "/placeholder.svg"}
                 alt={item.name}
+                fill
                 className="w-full h-full object-contain"
               />
               {displayImages.length > 1 && (
@@ -622,7 +609,7 @@ const ItemDetailModal = ({
           <div className="p-6">
             <div className="flex justify-between mb-4 gap-3">
               <div className="flex-1">
-                <h2 className="text-lg md:text-xl font-bold text-foreground mb-2 text-balance capitalize">
+                <h2 className="text-lg md:text-xl font-bold text-foreground text-balance capitalize">
                   {formatText(item.name)}
                 </h2>
               </div>
