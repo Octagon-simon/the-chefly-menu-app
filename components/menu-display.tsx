@@ -19,6 +19,7 @@ import type { MenuItem } from "@/types/menu";
 import Image from "next/image";
 import type { ItemDetailModalProps, MenuDisplayProps } from "./types";
 import { debounce } from "lodash";
+import { QRCodeComponent } from "./qr-code";
 
 export const MenuDisplay = ({
   user,
@@ -329,6 +330,30 @@ export const MenuDisplay = ({
           </div>
         </div>
 
+        {/* QR Code Modal */}
+        {showQR && (
+          <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+            <div className="bg-white p-8 rounded-2xl shadow-2xl max-w-sm w-full">
+              <div className="text-center mb-6">
+                <h3 className="text-xl font-bold text-foreground">
+                  Share Our Menu
+                </h3>
+                <p className="text-muted-foreground mt-2">
+                  Scan to view our digital menu
+                </p>
+              </div>
+              <QRCodeComponent value={window.location.href} />
+              <Button
+                onClick={() => setShowQR(false)}
+                className="w-full mt-6 text-white"
+                style={{ backgroundColor: primaryColor }}
+              >
+                Close
+              </Button>
+            </div>
+          </div>
+        )}
+
         {categories.length > 0 && (
           <div className="mb-10">
             <div className="flex flex-wrap gap-3 justify-center">
@@ -539,7 +564,7 @@ const ItemDetailModal = ({
       <Card className="w-full max-w-2xl max-h-[90vh] overflow-y-auto bg-white shadow-2xl">
         <CardContent className="p-0">
           {displayImages && displayImages.length > 0 && (
-            <div className="relative h-56 md:h-64 pb-3 border-b">
+            <div className="relative h-56 md:h-64 border-b">
               <Image
                 src={displayImages[currentImageIndex] || "/placeholder.svg"}
                 alt={item.name}
