@@ -268,7 +268,8 @@ export const MenuDisplay = ({
                                   <Image
                                     src={item.images[0] || "/placeholder.svg"}
                                     alt={item.name}
-                                    fill
+                                    width={12}
+                                    height={12}
                                     className="w-full h-full object-cover"
                                   />
                                 </div>
@@ -280,7 +281,7 @@ export const MenuDisplay = ({
                                 <p className="text-xs text-muted-foreground line-clamp-1">
                                   {capitalizeFirstLetter(item.description)}
                                 </p>
-                                <div className="flex items-center gap-2 mt-1">
+                                <div className="flex items-center justify-between gap-2 mt-1">
                                   <Badge
                                     variant="secondary"
                                     className="text-xs border-0 px-2 py-0"
@@ -583,7 +584,7 @@ const ItemDetailModal = ({
           <div className="p-6">
             <div className="flex justify-between mb-4 gap-3">
               <div className="flex-1">
-                <h2 className="text-lg md:text-xl font-bold text-foreground mb-2 text-balance capitalize">
+                <h2 className="text-lg md:text-xl font-bold text-foreground text-balance capitalize">
                   {formatText(item.name)}
                 </h2>
               </div>
