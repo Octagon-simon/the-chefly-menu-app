@@ -1,15 +1,16 @@
 import type React from "react";
 import type { Metadata } from "next";
 import "./globals.css";
-import { ToastContainer } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
-import { Suspense } from "react";
+import Script from "next/script";
+import Providers from "@/config/providers";
 
 export const metadata: Metadata = {
   title: "Chefly Menu - Digital Restaurant Menu",
   description:
     "Create beautiful digital menus for your restaurant with QR codes",
   generator: "Next.js",
+
   openGraph: {
     title: "Chefly Menu - Digital Restaurant Menu",
     description:
@@ -22,6 +23,9 @@ export const metadata: Metadata = {
         alt: "Chefly Menu preview",
       },
     ],
+    type: "website",
+    locale: "en_US",
+    siteName: "CheflyMenu",
   },
   twitter: {
     card: "summary_large_image",
@@ -39,15 +43,22 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en">
+      <head>
+        <Script
+          async
+          src="https://www.googletagmanager.com/gtag/js?id=G-02KPMKGY5G"
+        />
+        <Script id="google-analytics">
+          {`
+            window.dataLayer = window.dataLayer || [];
+            function gtag(){dataLayer.push(arguments);}
+            gtag('js', new Date());
+            gtag('config', 'G-02KPMKGY5G');
+          `}
+        </Script>
+      </head>
       <body className="antialiased">
-        <Suspense fallback={null}>
-          <ToastContainer
-            position="top-right"
-            autoClose={5000}
-            hideProgressBar={true}
-          />
-          {children}
-        </Suspense>
+        <Providers>{children}</Providers>
       </body>
     </html>
   );

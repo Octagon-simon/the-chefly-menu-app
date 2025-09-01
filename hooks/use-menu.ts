@@ -15,6 +15,8 @@ import {
 } from "firebase/database";
 import { useAuth } from "./use-auth";
 import type { MenuItem, Category } from "@/types/menu";
+import { db } from "@/lib/firebase";
+import { metadataCache } from "@/lib/metadataCache";
 
 export const useMenu = () => {
   const { user } = useAuth();
@@ -30,9 +32,7 @@ export const useMenu = () => {
       }
 
       try {
-        const db = getDatabase();
-
-        // Fetch menu items
+        // Fetch fresh menu items
         const itemsRef = ref(db, "menuItems");
         const itemsQuery = query(
           itemsRef,
@@ -111,7 +111,8 @@ export const useMenu = () => {
       if (user.subscription.plan === "free" && itemCount >= 5) {
         return {
           success: false,
-          error: "Free plan limit reached. Renew your subscription to add more items.",
+          error:
+            "Free plan limit reached. Renew your subscription to add more items.",
         };
       }
 
@@ -127,6 +128,9 @@ export const useMenu = () => {
       await set(newRef, newItem);
 
       setMenuItems((prev) => [{ id: newRef.key!, ...newItem }, ...prev]);
+
+      //update meta data last updated
+      await metadataCache.updateMetadata(user.id);
 
       return { success: true };
     } catch (error: any) {
@@ -153,6 +157,9 @@ export const useMenu = () => {
         )
       );
 
+      //update meta data last updated
+      await metadataCache.updateMetadata(user.id);
+
       return { success: true };
     } catch (error: any) {
       console.error("Error updating menu item:", error);
@@ -161,10 +168,16 @@ export const useMenu = () => {
   };
 
   const deleteMenuItem = async (id: string) => {
+    if (!user) return { success: false, error: "No user found" };
+
     try {
       const db = getDatabase();
       await remove(ref(db, `menuItems/${id}`));
       setMenuItems((prev) => prev.filter((item) => item.id !== id));
+
+      //update meta data last updated
+      await metadataCache.updateMetadata(user.id);
+
       return { success: true };
     } catch (error: any) {
       console.error("Error deleting menu item:", error);
@@ -190,6 +203,10 @@ export const useMenu = () => {
       await set(newRef, newCategory);
 
       setCategories((prev) => [...prev, { id: newRef.key!, ...newCategory }]);
+
+      //update meta data last updated
+      await metadataCache.updateMetadata(user.id);
+
       return { success: true };
     } catch (error: any) {
       console.error("Error adding category:", error);
@@ -215,6 +232,9 @@ export const useMenu = () => {
         )
       );
 
+      //update meta data last updated
+      await metadataCache.updateMetadata(user.id);
+
       return { success: true };
     } catch (error: any) {
       console.error("Error updating category:", error);
@@ -223,10 +243,16 @@ export const useMenu = () => {
   };
 
   const deleteCategory = async (id: string) => {
+    if (!user) return { success: false, error: "No user found" };
+
     try {
       const db = getDatabase();
       await remove(ref(db, `categories/${id}`));
       setCategories((prev) => prev.filter((category) => category.id !== id));
+
+      //update meta data last updated
+      await metadataCache.updateMetadata(user.id);
+
       return { success: true };
     } catch (error: any) {
       console.error("Error deleting category:", error);

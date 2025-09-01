@@ -17,11 +17,8 @@ import {
 } from "lucide-react";
 import type { MenuItem } from "@/types/menu";
 import Image from "next/image";
-import { MenuCache } from "@/lib/menuCache";
 import type { ItemDetailModalProps, MenuDisplayProps } from "./types";
 import { debounce } from "lodash";
-
-const menuCache = new MenuCache();
 
 export const MenuDisplay = ({
   user,
@@ -39,13 +36,6 @@ export const MenuDisplay = ({
   const searchContainerRef = useRef<HTMLDivElement>(null);
 
   const filteredItems = useMemo(() => {
-    const cacheKey = `${user.id}-${searchQuery}-${selectedCategory}`;
-    const cached = menuCache.get(cacheKey);
-
-    if (cached) {
-      return cached;
-    }
-
     const filtered = menuItems.filter((item) => {
       const matchesSearch =
         searchQuery === "" ||
@@ -61,15 +51,8 @@ export const MenuDisplay = ({
       return matchesSearch && matchesCategory;
     });
 
-    menuCache.set(cacheKey, filtered);
     return filtered;
-  }, [menuItems, searchQuery, selectedCategory, user.id]);
-
-  useEffect(() => {
-    return () => {
-      menuCache.destroy();
-    };
-  }, []);
+  }, [menuItems, searchQuery, selectedCategory]);
 
   const searchResults = useMemo(() => {
     if (debouncedSearchQuery === "") return [];
@@ -282,9 +265,10 @@ export const MenuDisplay = ({
                             <div className="flex items-center gap-3">
                               {item.images && item.images.length > 0 && (
                                 <div className="w-12 h-12 rounded-lg overflow-hidden flex-shrink-0">
-                                  <img
+                                  <Image
                                     src={item.images[0] || "/placeholder.svg"}
                                     alt={item.name}
+                                    fill
                                     className="w-full h-full object-cover"
                                   />
                                 </div>
@@ -296,7 +280,7 @@ export const MenuDisplay = ({
                                 <p className="text-xs text-muted-foreground line-clamp-1">
                                   {capitalizeFirstLetter(item.description)}
                                 </p>
-                                <div className="flex items-center justify-between gap-2 mt-1">
+                                <div className="flex items-center gap-2 mt-1">
                                   <Badge
                                     variant="secondary"
                                     className="text-xs border-0 px-2 py-0"
@@ -432,9 +416,10 @@ export const MenuDisplay = ({
                 <div className="lg:flex">
                   {item.images && item.images.length > 0 && (
                     <div className="lg:w-80 h-48 lg:h-56 relative overflow-hidden flex-shrink-0">
-                      <img
+                      <Image
                         src={item.images[0] || "/placeholder.svg"}
                         alt={item.name}
+                        fill
                         className="w-full h-full object-cover transition-transform duration-300 hover:scale-110"
                       />
                       {user.subscription.plan !== "free" &&
@@ -554,9 +539,10 @@ const ItemDetailModal = ({
         <CardContent className="p-0">
           {displayImages && displayImages.length > 0 && (
             <div className="relative h-56 md:h-64 pb-3 border-b">
-              <img
+              <Image
                 src={displayImages[currentImageIndex] || "/placeholder.svg"}
                 alt={item.name}
+                fill
                 className="w-full h-full object-contain"
               />
               {displayImages.length > 1 && (

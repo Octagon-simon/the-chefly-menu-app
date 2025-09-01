@@ -5,6 +5,8 @@ import type { MenuItem, Category, Brand } from "@/types/menu";
 import { ref, query, orderByChild, equalTo, get } from "firebase/database";
 import { Metadata } from "next";
 import { formatText } from "@/lib/utils";
+import { MENU_CACHE_PREFIX } from "@/constants/app";
+import { metadataCache } from "@/lib/metadataCache";
 
 interface UserMenuPageProps {
   params: Promise<{
@@ -40,42 +42,62 @@ async function getUserByUsername(username: string): Promise<{
 
 async function getUserMenuData(userId: string) {
   try {
-    // Fetch all data in parallel
-    const [itemsSnapshot, categoriesSnapshot, brandSnap] = await Promise.all([
-      get(query(ref(db, "menuItems"), orderByChild("userId"), equalTo(userId))),
-      get(
-        query(ref(db, "categories"), orderByChild("userId"), equalTo(userId))
-      ),
-      get(ref(db, `brands/${userId}`)),
-    ]);
+    // Use metadata-based cache for efficient data fetching
+    const cachedData = await metadataCache.get(
+      userId,
+      `${MENU_CACHE_PREFIX}${userId}`,
+      async () => {
+        // Fetch all data in parallel
+        const [itemsSnapshot, categoriesSnapshot, brandSnap] =
+          await Promise.all([
+            get(
+              query(
+                ref(db, "menuItems"),
+                orderByChild("userId"),
+                equalTo(userId)
+              )
+            ),
+            get(
+              query(
+                ref(db, "categories"),
+                orderByChild("userId"),
+                equalTo(userId)
+              )
+            ),
+            get(ref(db, `brands/${userId}`)),
+          ]);
 
-    // Process menu items
-    const menuItems: MenuItem[] = [];
-    if (itemsSnapshot.exists()) {
-      itemsSnapshot.forEach((snap) => {
-        const data = snap.val();
-        if (data.available) {
-          menuItems.push({ id: snap.key!, ...data });
+        // Process menu items
+        const menuItems: MenuItem[] = [];
+        if (itemsSnapshot.exists()) {
+          itemsSnapshot.forEach((snap) => {
+            const data = snap.val();
+            if (data.available) {
+              menuItems.push({ id: snap.key!, ...data });
+            }
+          });
+          menuItems.sort((a, b) =>
+            (b.createdAt || "").localeCompare(a.createdAt || "")
+          );
         }
-      });
-      menuItems.sort((a, b) =>
-        (b.createdAt || "").localeCompare(a.createdAt || "")
-      );
-    }
 
-    // Process categories
-    const categories: Category[] = [];
-    if (categoriesSnapshot.exists()) {
-      categoriesSnapshot.forEach((snap) => {
-        categories.push({ id: snap.key!, ...snap.val() });
-      });
-      categories.sort((a, b) => a.order - b.order);
-    }
+        // Process categories
+        const categories: Category[] = [];
+        if (categoriesSnapshot.exists()) {
+          categoriesSnapshot.forEach((snap) => {
+            categories.push({ id: snap.key!, ...snap.val() });
+          });
+          categories.sort((a, b) => a.order - b.order);
+        }
 
-    // Process brand
-    const brand = brandSnap.exists() ? (brandSnap.val() as Brand) : null;
+        // Process brand
+        const brand = brandSnap.exists() ? (brandSnap.val() as Brand) : null;
 
-    return { menuItems, categories, brand };
+        return { menuItems, categories, brand };
+      }
+    );
+
+    return cachedData;
   } catch (error) {
     console.error("Error fetching menu data:", error);
     return { menuItems: [], categories: [], brand: null };
@@ -117,7 +139,7 @@ export async function generateMetadata(
   const logoUrl =
     brand?.logo || `${process.env.NEXT_PUBLIC_APP_URL + "/cheflymenuapp.png"}`;
 
-  return {
+  const baseMetadata: Metadata = {
     title: `${formatText(restaurantName)} - Digital Menu`,
     description,
     openGraph: {
@@ -127,18 +149,64 @@ export async function generateMetadata(
         ? [
             {
               url: logoUrl,
-              width: 800,
-              height: 600,
+              width: 1200,
+              height: 630,
               alt: `${formatText(restaurantName)} Logo`,
             },
           ]
         : [],
+      type: "website",
+      locale: "en_US",
+      siteName: "CheflyMenu",
     },
     twitter: {
       card: "summary_large_image",
       title: `${formatText(restaurantName)} - Digital Menu`,
       description,
       images: logoUrl ? [logoUrl] : [],
+    },
+  };
+
+  if (user.subscription?.plan === "pro") {
+    return {
+      ...baseMetadata,
+      keywords: `${restaurantName}, restaurant, menu, food, dining, online menu, digital menu, ${params.username}`,
+      authors: [{ name: restaurantName }],
+      creator: restaurantName,
+      publisher: restaurantName,
+      robots: {
+        index: true,
+        follow: true,
+        googleBot: {
+          index: true,
+          follow: true,
+          "max-video-preview": -1,
+          "max-image-preview": "large",
+          "max-snippet": -1,
+        },
+      },
+      alternates: {
+        canonical: `${process.env.NEXT_PUBLIC_APP_URL}/${params.username}`,
+      },
+      verification: {
+        google: process.env.GOOGLE_SITE_VERIFICATION,
+      },
+      category: "restaurant",
+      classification: "business",
+      other: {
+        "restaurant-name": restaurantName,
+        "menu-type": "digital",
+        // "cuisine-type": brand?.cuisine || "International",
+        "business-type": "restaurant",
+      },
+    };
+  }
+
+  return {
+    ...baseMetadata,
+    robots: {
+      index: false,
+      follow: false,
     },
   };
 }
