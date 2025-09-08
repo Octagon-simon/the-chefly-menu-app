@@ -170,7 +170,7 @@ export async function generateMetadata(
   if (user.subscription?.plan === "pro") {
     return {
       ...baseMetadata,
-      keywords: `${restaurantName}, restaurant, menu, food, dining, online menu, digital menu, ${params.username}`,
+      keywords: `${restaurantName}, restaurant, menu, food, dining, online menu, digital menu for ${params.username}`,
       authors: [{ name: restaurantName }],
       creator: restaurantName,
       publisher: restaurantName,
