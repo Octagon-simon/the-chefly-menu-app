@@ -151,19 +151,19 @@ export const MenuDisplay = ({
     <div className="min-h-screen bg-gradient-to-br from-amber-50 via-white to-emerald-50">
       <header className="bg-white/80 backdrop-blur-md shadow-lg border-b border-primary/20 sticky top-0 z-40">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
-          <div className="flex items-center justify-between">
+          <div className="flex items-center justify-between gap-4 md:gap-0">
             <div className="flex items-center gap-4">
               {brand?.logo ? (
-                <div className="relative">
-                  <Image
-                    src={brand.logo || "/placeholder.svg"}
-                    alt={restaurantName}
-                    width={60}
-                    height={60}
-                    className="w-12 h-12 sm:w-15 sm:h-15 object-cover rounded-full shadow-lg ring-2 ring-primary/20"
-                  />
-                </div>
+                // <div className="relative">
+                <Image
+                  src={brand.logo || "/placeholder.svg"}
+                  alt={restaurantName}
+                  width={60}
+                  height={60}
+                  className="w-12 h-12 sm:w-15 sm:h-15 object-cover rounded-full shadow-lg ring-2 ring-primary/20"
+                />
               ) : (
+                // </div>
                 <div
                   className="w-12 h-12 sm:w-15 sm:h-15 rounded-full flex items-center justify-center shadow-lg"
                   style={{ backgroundColor: primaryColor }}
