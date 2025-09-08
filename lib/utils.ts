@@ -44,3 +44,8 @@ export function formatText(name: string): string {
     .map((word) => capitalizeFirstLetter(word))
     .join(" ");
 }
+
+export function getFirstWord(text: string): string {
+  if (!text) return "";
+  return text.trim().split(/\s+/)[0] || "";
+}

@@ -3,7 +3,7 @@ import { db } from "@/lib/firebase";
 import { ref, get } from "firebase/database";
 import type { Brand } from "@/types/menu";
 import { MetadataRoute } from "next";
-import { formatText } from "@/lib/utils";
+import { formatText, getFirstWord } from "@/lib/utils";
 
 /** If the stored URL is a Cloudinary URL, inject transformation params for size.
  *  Otherwise return the original URL unchanged.
@@ -40,9 +40,9 @@ export async function GET(
   const { username } = params;
 
   const userPublicSnap = await get(ref(db, "userPublic"));
-  
+
   let userId: string | null = null;
-  
+
   userPublicSnap.forEach((snap) => {
     if (snap.val().username === username) userId = snap.key!;
   });
@@ -80,8 +80,8 @@ export async function GET(
 
   const manifest: MetadataRoute.Manifest = {
     id: `/${username}`,
-    name: `${restaurantName} Menu`,
-    short_name: "Menu app",
+    name: `${getFirstWord(restaurantName)} Menu`,
+    short_name: `${getFirstWord(restaurantName)} Menu`,
     description: description || `Digital menu for ${restaurantName}`,
     start_url: `/${username}`,
     display: "standalone",
