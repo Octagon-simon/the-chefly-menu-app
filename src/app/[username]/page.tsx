@@ -170,10 +170,14 @@ export async function generateMetadata(
   if (user.subscription?.plan === "pro") {
     return {
       ...baseMetadata,
-      keywords: `${restaurantName}, restaurant, menu, food, dining, online menu, digital menu, ${params.username}`,
-      authors: [{ name: restaurantName }],
-      creator: restaurantName,
-      publisher: restaurantName,
+      keywords: `${formatText(
+        restaurantName
+      )}, restaurant, menu, food, dining, online menu, digital menu, ${
+        params.username
+      }`,
+      authors: [{ name: formatText(restaurantName) }],
+      creator: formatText(restaurantName),
+      publisher: formatText(restaurantName),
       robots: {
         index: true,
         follow: true,
@@ -194,7 +198,7 @@ export async function generateMetadata(
       category: "restaurant",
       classification: "business",
       other: {
-        "restaurant-name": restaurantName,
+        "restaurant-name": formatText(restaurantName),
         "menu-type": "digital",
         // "cuisine-type": brand?.cuisine || "International",
         "business-type": "restaurant",

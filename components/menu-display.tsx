@@ -10,7 +10,6 @@ import {
   ChevronLeft,
   ChevronRight,
   ChevronUp,
-  QrCode,
   Search,
   Utensils,
   X,
@@ -20,6 +19,7 @@ import Image from "next/image";
 import type { ItemDetailModalProps, MenuDisplayProps } from "./types";
 import { debounce } from "lodash";
 import { QRCodeComponent } from "./qr-code";
+import ShareOrInstallButton from "./share-or-install-button";
 
 export const MenuDisplay = ({
   user,
@@ -188,14 +188,10 @@ export const MenuDisplay = ({
                   </span>
                 </div>
               ) : (
-                <Button
-                  onClick={() => setShowQR(!showQR)}
-                  className="text-white shadow-lg font-medium"
-                  style={{ backgroundColor: primaryColor }}
-                >
-                  <QrCode className="w-4 h-4 mr-2" />
-                  Share Menu
-                </Button>
+                <ShareOrInstallButton
+                  primaryColor={primaryColor}
+                  setShowQR={setShowQR}
+                />
               )}
             </div>
           </div>
@@ -363,7 +359,7 @@ export const MenuDisplay = ({
                 className={`px-6 py-3 rounded-full font-medium transition-all duration-200 ${
                   selectedCategory === "All"
                     ? "text-white shadow-lg scale-105"
-                    : "bg-white/80 hover:bg-white border-primary/20 hover:border-primary/40 text-foreground"
+                    : "bg-white/80 hover:bg-white border-primary/20 hover:border-primary/40 text-foreground hover:text-primary/60"
                 }`}
                 style={
                   selectedCategory === "All"
@@ -383,7 +379,7 @@ export const MenuDisplay = ({
                   className={`px-6 py-3 rounded-full font-medium transition-all duration-200 ${
                     selectedCategory === category.name
                       ? "text-white shadow-lg scale-105"
-                      : "bg-white/80 hover:bg-white border-primary/20 hover:border-primary/40 text-foreground"
+                      : "bg-white/80 hover:bg-white border-primary/20 hover:border-primary/40 text-foreground hover:text-primary/60"
                   }`}
                   style={
                     selectedCategory === category.name
