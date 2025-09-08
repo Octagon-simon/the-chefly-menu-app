@@ -56,6 +56,7 @@ export default function RootLayout({
             gtag('config', 'G-02KPMKGY5G');
           `}
         </Script>
+        <link rel="apple-touch-icon" href="/cheflymenuapp-192.png" />
       </head>
       <body className="antialiased">
         <Providers>{children}</Providers>

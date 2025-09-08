@@ -63,11 +63,11 @@ const pricingPlans = [
     description: "Everything you need for a professional restaurant",
     features: [
       "Unlimited menu items",
-      "Custom brand colors & logo",
-      "Custom branded URL",
+      "Custom branded URL, brand colors & logo",
       "Up to 5 images per item",
       "Priority support",
       "Remove CheflyMenu branding",
+      "Installable menu app on any phone",
     ],
     cta: "Upgrade to Premium",
     popular: true,

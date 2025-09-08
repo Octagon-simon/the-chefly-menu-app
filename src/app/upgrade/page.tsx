@@ -13,7 +13,7 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Crown, Zap, Star, ArrowLeft } from "lucide-react";
+import { Crown, Zap, Star, ArrowLeft, Smartphone } from "lucide-react";
 import { LoadingSpinner } from "@/components/loading-spinner";
 import { getAuth } from "firebase/auth";
 import { toast } from "react-toastify";
@@ -445,12 +445,12 @@ export default function UpgradePage() {
 
               <div className="text-center">
                 <div className="bg-orange-100 rounded-full p-4 w-16 h-16 mx-auto mb-4 flex items-center justify-center">
-                  <Star className="h-8 w-8 text-orange-500" />
+                  <Smartphone className="h-8 w-8 text-orange-500" />
                 </div>
-                <h4 className="font-semibold mb-2">Priority Support</h4>
+                <h4 className="font-semibold mb-2">Installable Menu App</h4>
                 <p className="text-gray-600">
-                  Receive dedicated, high-priority support for faster issue
-                  resolution.
+                  Customers can save your menu to their phone and use it like an
+                  app.
                 </p>
               </div>
             </div>
