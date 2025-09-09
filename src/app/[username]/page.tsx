@@ -172,7 +172,7 @@ export async function generateMetadata(
       ...baseMetadata,
       keywords: `${formatText(
         restaurantName
-      )}, restaurant, menu, food, dining, online menu, digital menu, ${
+      )}, restaurant, menu, food, dining, online menu, digital menu for ${
         params.username
       }`,
       authors: [{ name: formatText(restaurantName) }],

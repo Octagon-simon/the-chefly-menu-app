@@ -153,24 +153,13 @@ export const MenuDisplay = ({
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
           <div className="flex items-center justify-between gap-4 md:gap-0">
             <div className="flex items-center gap-4">
-              {brand?.logo ? (
-                // <div className="relative">
-                <Image
-                  src={brand.logo || "/placeholder.svg"}
-                  alt={restaurantName}
-                  width={60}
-                  height={60}
-                  className="w-12 h-12 sm:w-15 sm:h-15 object-cover rounded-full shadow-lg ring-2 ring-primary/20"
-                />
-              ) : (
-                // </div>
-                <div
-                  className="w-12 h-12 sm:w-15 sm:h-15 rounded-full flex items-center justify-center shadow-lg"
-                  style={{ backgroundColor: primaryColor }}
-                >
-                  <Utensils className="w-6 h-6 text-white" />
-                </div>
-              )}
+              <Image
+                src={brand?.logo || "/cheflymenuapp-192.png"}
+                alt={restaurantName}
+                width={60}
+                height={60}
+                className="w-12 h-12 sm:w-15 sm:h-15 object-cover rounded-full shadow-lg ring-2 ring-primary/20"
+              />
               <h1 className="text-xl sm:text-2xl font-bold text-foreground">
                 {restaurantName}
               </h1>
