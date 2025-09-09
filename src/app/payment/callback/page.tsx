@@ -123,7 +123,7 @@ export default function PaymentCallbackPage() {
                   </div>
                   <div className="flex justify-between gap-5">
                     <span className="text-green-700">Reference:</span>
-                    <span className="font-mono text-green-900 break-all">
+                    <span className="font-mono text-green-900 break-all text-right">
                       {paymentDetails.reference}
                     </span>
                   </div>
@@ -150,6 +150,7 @@ export default function PaymentCallbackPage() {
                 <li>✅ Custom branding</li>
                 <li>✅ QR code generation</li>
                 <li>✅ Priority support</li>
+                <li>✅ Installable menu app</li>
               </ul>
             </div>
 
@@ -164,7 +165,7 @@ export default function PaymentCallbackPage() {
               <Button
                 variant="outline"
                 onClick={() => router.push(`/${user?.username}`)}
-                className="flex-1"
+                className="flex-1 border-orange-500 hover:!bg-transparent text-orange-500 hover:text-orange-600"
               >
                 View My Menu
               </Button>
