@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Your Monthly Menu Analytics - CheflyMenu</title>
+</head>
+
+<body style="margin: 0; padding: 0; font-family: Arial, sans-serif; background-color: #f8f9fa;">
+  <table width="100%" cellpadding="0" cellspacing="0" style="background-color: #f8f9fa;">
+    <tr>
+      <td align="center" style="padding: 40px 20px;">
+        <table width="600" cellpadding="0" cellspacing="0"
+          style="background-color: #ffffff; border-radius: 12px; box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1); overflow: hidden;">
+          <!-- Header -->
+          <tr>
+            <td
+              style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); padding: 40px 30px; text-align: center;">
+              <h1
+                style="color: #ffffff; font-size: 28px; font-weight: bold; margin: 0; text-shadow: 0 2px 4px rgba(0,0,0,0.1);">
+                📊 Your {{month}} Analytics
+              </h1>
+            </td>
+          </tr>
+
+          <!-- Content -->
+          <tr>
+            <td style="padding: 40px 30px;">
+              <h2 style="color: #1a1a1a; font-size: 24px; font-weight: 600; margin: 0 0 20px 0;">
+                Hi {{user}},
+              </h2>
+
+              <p style="color: #4a5568; font-size: 16px; line-height: 1.6; margin: 0 0 30px 0;">
+                Here's how your menu performed in {{month}}. Great job keeping your customers engaged!
+              </p>
+
+              <!-- Stats Grid -->
+              <table width="100%" cellpadding="0" cellspacing="0" style="margin: 30px 0;">
+                <tr>
+                  <td width="50%"
+                    style="padding: 20px; background-color: #f0fff4; border-radius: 8px; text-align: center; border: 2px solid #68d391;">
+                    <h3 style="color: #22543d; font-size: 32px; font-weight: bold; margin: 0;">{{total_visits}}</h3>
+                    <p style="color: #2f855a; font-size: 16px; font-weight: 600; margin: 5px 0 0 0;">Total Visits</p>
+                  </td>
+                  <td width="50%"
+                    style="padding: 20px; background-color: #fef5e7; border-radius: 8px; text-align: center; border: 2px solid #f6ad55;">
+                    <h3 style="color: #c05621; font-size: 32px; font-weight: bold; margin: 0;">{{unique_visitors}}</h3>
+                    <p style="color: #744210; font-size: 16px; font-weight: 600; margin: 5px 0 0 0;">Unique Visitors</p>
+                  </td>
+                </tr>
+              </table>
+
+              <div
+                style="background-color: #f7fafc; border-left: 4px solid #667eea; padding: 20px; margin: 20px 0; border-radius: 0 8px 8px 0;">
+                <h3 style="color: #667eea; font-size: 18px; font-weight: 600; margin: 0 0 15px 0;">
+                  📈 Key Insights:
+                </h3>
+                <ul style="color: #4a5568; font-size: 16px; line-height: 1.6; margin: 0; padding-left: 20px;">
+                  <li>Your menu was viewed <strong>{{total_visits}} times</strong> this month</li>
+                  <li><strong>{{unique_visitors}} unique customers</strong> discovered your menu</li>
+                  <li>Most popular category: <strong>{{popular_category}}</strong></li>
+                  <li>Peak viewing time: <strong>{{peak_time}}</strong></li>
+                </ul>
+              </div>
+
+              <div style="text-align: center; margin: 30px 0;">
+                <a href="{{menu_url}}"
+                  style="display: inline-block; background-color: #E44D26; color: #ffffff; text-decoration: none; padding: 15px 30px; border-radius: 8px; font-weight: 600; font-size: 16px; box-shadow: 0 4px 6px rgba(228, 77, 38, 0.3); margin-right: 10px;">
+                  View Your Menu
+                </a>
+                <a href="{{dashboard_url}}"
+                  style="display: inline-block; background-color: transparent; color: #E44D26; text-decoration: none; padding: 15px 30px; border: 2px solid #E44D26; border-radius: 8px; font-weight: 600; font-size: 16px;">
+                  Go to Dashboard
+                </a>
+              </div>
+            </td>
+          </tr>
+
+          <!-- Footer -->
+          <tr>
+            <td style="background-color: #f8f9fa; padding: 30px; text-align: center; border-top: 1px solid #e2e8f0;">
+              <p style="color: #718096; font-size: 14px; margin: 0 0 10px 0;">
+                Keep up the great work!<br>
+                The CheflyMenu Team
+              </p>
+              <p style="color: #a0aec0; font-size: 12px; margin: 0;">
+                If you no longer wish to receive these emails, you can <a href="{{unsubscribe_url}}"
+                  style="color: #E44D26;">unsubscribe here</a>.
+              </p>
+            </td>
+          </tr>
+        </table>
+      </td>
+    </tr>
+  </table>
+</body>
+
+</html>
