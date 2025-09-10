@@ -37,7 +37,7 @@ export async function GET(
   _request: Request,
   { params }: { params: { username: string } }
 ) {
-  const { username } = params;
+  const { username } = await params;
 
   const userPublicSnap = await get(ref(db, "userPublic"));
 
