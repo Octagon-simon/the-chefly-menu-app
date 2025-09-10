@@ -77,7 +77,6 @@ export const useAuth = () => {
             subject:
               "🎉 Welcome to CheflyMenu - Your Digital Menu Journey Starts Here!",
             variables: {
-              user: username,
               app_url: `${baseUrl}/admin`,
               upgrade_url: `${baseUrl}/upgrade`,
             },
