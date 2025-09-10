@@ -17,7 +17,8 @@ if (!getApps().length) {
 
 export async function POST(request: NextRequest) {
   try {
-    const { plan, idToken, promoCode, discount } = await request.json();
+    const { plan, idToken, promoCode, discount, isRenewal, remainingDays } =
+      await request.json();
 
     if (!plan || !idToken) {
       return NextResponse.json(
@@ -64,6 +65,8 @@ export async function POST(request: NextRequest) {
         discount: discount || 0,
         originalAmount: baseAmount,
         finalAmount: Math.round(finalAmount),
+        isRenewal: isRenewal || false,
+        remainingDays: remainingDays || 0,
       },
     });
 

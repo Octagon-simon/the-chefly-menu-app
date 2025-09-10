@@ -23,13 +23,16 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const { userId, plan } = verification.data.metadata;
+    const { userId, plan, isRenewal, remainingDays } =
+      verification.data.metadata;
 
     // Upgrade user subscription
     const upgradeSuccess = await upgradeUserToPro(
       userId,
       plan as "monthly" | "yearly",
-      reference
+      reference,
+      isRenewal || false,
+      remainingDays || 0
     );
 
     if (!upgradeSuccess) {
