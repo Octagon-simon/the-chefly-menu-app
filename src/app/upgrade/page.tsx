@@ -13,7 +13,7 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Crown, Zap, Star, ArrowLeft, Smartphone } from "lucide-react";
+import { Crown, Zap, ArrowLeft, Smartphone } from "lucide-react";
 import { LoadingSpinner } from "@/components/loading-spinner";
 import { getAuth } from "firebase/auth";
 import { toast } from "react-toastify";
@@ -47,6 +47,34 @@ export default function UpgradePage() {
   const [promoLoading, setPromoLoading] = useState(false);
   const [promoError, setPromoError] = useState("");
   const [promoApplied, setPromoApplied] = useState(false);
+
+  const [isRenewal, setIsRenewal] = useState(false);
+  const [remainingDays, setRemainingDays] = useState(0);
+
+  useEffect(() => {
+    if (user && user.subscription.plan === "pro" && user.subscription.endDate) {
+      const endDate = new Date(user.subscription.endDate);
+      const now = new Date();
+
+      // normalize to midnight (ignore hours/minutes/seconds)
+      const endDateMidnight = new Date(
+        endDate.getFullYear(),
+        endDate.getMonth(),
+        endDate.getDate()
+      );
+      const nowMidnight = new Date(
+        now.getFullYear(),
+        now.getMonth(),
+        now.getDate()
+      );
+
+      const diffTime = endDateMidnight.getTime() - nowMidnight.getTime();
+      const diffDays = Math.max(0, Math.ceil(diffTime / (1000 * 60 * 60 * 24)));
+
+      setRemainingDays(diffDays);
+      setIsRenewal(diffDays > 0);
+    }
+  }, [user]);
 
   const formatPrice = (amount: number) => {
     return new Intl.NumberFormat("en-NG", {
@@ -143,6 +171,8 @@ export default function UpgradePage() {
           idToken,
           promoCode: promoApplied ? promoCode : null,
           discount: promoDiscount,
+          isRenewal,
+          remainingDays,
         }),
       });
 
@@ -178,34 +208,6 @@ export default function UpgradePage() {
     );
   }
 
-  if (user.subscription.plan === "pro") {
-    return (
-      <div className="min-h-screen bg-gradient-to-br from-orange-50 to-red-50 py-12">
-        <div className="container mx-auto px-4">
-          <div className="max-w-2xl mx-auto text-center">
-            <div className="mb-8">
-              <Crown className="h-16 w-16 text-orange-500 mx-auto mb-4" />
-              <h1 className="text-3xl font-bold text-gray-900 mb-4">
-                You're Already Pro! 👑
-              </h1>
-              <p className="text-gray-600 mb-8">
-                You have access to all premium features. Enjoy building amazing
-                menus!
-              </p>
-              <Button
-                onClick={() => router.push("/admin")}
-                className="bg-orange-500 hover:bg-orange-600"
-              >
-                <ArrowLeft className="h-4 w-4 mr-2" />
-                Back to Dashboard
-              </Button>
-            </div>
-          </div>
-        </div>
-      </div>
-    );
-  }
-
   const plansWithDiscount = plans.map((plan) => ({
     ...plan,
     originalPrice: plan.price,
@@ -232,24 +234,45 @@ export default function UpgradePage() {
             </Button>
 
             <h1 className="text-4xl font-bold text-gray-900 mb-4">
-              Upgrade to Premium
+              {isRenewal ? "Renew Your Subscription" : "Upgrade to Premium"}
             </h1>
             <p className="text-xl text-gray-600 max-w-2xl mx-auto">
-              Unlock powerful features to create stunning digital menus and grow
-              your restaurant business
+              {isRenewal
+                ? "Continue enjoying premium features with seamless renewal"
+                : "Unlock powerful features to create stunning digital menus and grow your restaurant business"}
             </p>
           </div>
 
           {/* Current Plan */}
-          <div className="mb-8 p-4 bg-blue-50 rounded-lg border border-blue-200">
+          <div
+            className={`mb-8 p-4 rounded-lg border ${
+              isRenewal
+                ? "bg-orange-50 border-orange-200"
+                : "bg-blue-50 border-blue-200"
+            }`}
+          >
             <div className="flex items-center justify-between">
               <div>
-                <h3 className="font-semibold text-blue-900">
-                  Current Plan: Free
+                <h3
+                  className={`font-semibold ${
+                    isRenewal ? "text-orange-900" : "text-blue-900"
+                  }`}
+                >
+                  Current Plan: {isRenewal ? "Premium" : "Free"}
                 </h3>
-                <p className="text-blue-700">Limited to 5 menu items</p>
+                <p className={isRenewal ? "text-orange-700" : "text-blue-700"}>
+                  {isRenewal
+                    ? `${
+                        remainingDays && remainingDays === 1
+                          ? remainingDays + " day"
+                          : remainingDays + " days"
+                      } remaining - Renewal will extend your subscription`
+                    : "Limited to 5 menu items"}
+                </p>
               </div>
-              <Badge variant="secondary">Free</Badge>
+              <Badge variant={isRenewal ? "default" : "secondary"}>
+                {isRenewal ? "Premium" : "Free"}
+              </Badge>
             </div>
           </div>
 
@@ -363,6 +386,18 @@ export default function UpgradePage() {
                     )}
                     <div className="text-gray-600">per {plan.period}</div>
 
+                    {isRenewal && remainingDays > 0 && (
+                      <div className="mt-2">
+                        <span className="text-orange-600 font-semibold text-sm bg-orange-50 px-3 py-1 rounded-full">
+                          +
+                          {remainingDays && remainingDays === 1
+                            ? remainingDays + " day"
+                            : remainingDays + " days"}{" "}
+                          will be added to your new subscription
+                        </span>
+                      </div>
+                    )}
+
                     {plan.savings && !promoApplied && (
                       <div className="mt-2">
                         <span className="text-green-600 font-semibold text-sm bg-green-50 px-3 py-1 rounded-full">
@@ -408,7 +443,7 @@ export default function UpgradePage() {
                     {processingPlan === plan.id ? (
                       <>Processing...</>
                     ) : (
-                      `Choose ${plan.name}`
+                      `${isRenewal ? "Renew with" : "Choose"} ${plan.name}`
                     )}
                   </Button>
                 </CardFooter>
@@ -447,7 +482,7 @@ export default function UpgradePage() {
                 <div className="bg-orange-100 rounded-full p-4 w-16 h-16 mx-auto mb-4 flex items-center justify-center">
                   <Smartphone className="h-8 w-8 text-orange-500" />
                 </div>
-                <h4 className="font-semibold mb-2">Installable Menu App</h4>
+                <h4 className="font-semibold mb-2">Installable Menu App (PWA)</h4>
                 <p className="text-gray-600">
                   Customers can save your menu to their phone and use it like an
                   app.

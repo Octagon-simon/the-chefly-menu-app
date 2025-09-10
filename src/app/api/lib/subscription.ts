@@ -19,7 +19,9 @@ if (!getApps().length) {
 export async function upgradeUserToPro(
   userId: string,
   plan: "monthly" | "yearly",
-  paymentReference: string
+  paymentReference: string,
+  isRenewal = false,
+  remainingDays = 0
 ): Promise<boolean> {
   try {
     const db = getDatabase();
@@ -31,7 +33,19 @@ export async function upgradeUserToPro(
 
     const user = userSnap.val() as User;
     const now = new Date();
-    const endDate = new Date();
+
+    let startDate: Date;
+    let endDate: Date;
+
+    if (isRenewal && remainingDays > 0 && user.subscription.endDate) {
+      // For renewals with remaining time, extend from current end date
+      startDate = new Date(user.subscription.endDate);
+      endDate = new Date(user.subscription.endDate);
+    } else {
+      // For new subscriptions or expired renewals, start from now
+      startDate = now;
+      endDate = new Date();
+    }
 
     if (plan === "monthly") {
       endDate.setMonth(endDate.getMonth() + 1);
@@ -43,7 +57,7 @@ export async function upgradeUserToPro(
       ...user.subscription,
       plan: "pro",
       status: "active",
-      startDate: now.toISOString(),
+      startDate: startDate.toISOString(),
       endDate: endDate.toISOString(),
       updatedAt: now.toISOString(),
     };

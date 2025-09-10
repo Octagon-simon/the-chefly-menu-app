@@ -10,7 +10,7 @@ export const checkSubscriptions = onSchedule(
     schedule: "0 0 * * *", // midnight UTC
     timeZone: "UTC",
   },
-  async (event) => {
+  async (_event) => {
     try {
       const usersSnap = await db.ref("users").once("value");
       const now = new Date();

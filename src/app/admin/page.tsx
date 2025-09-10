@@ -32,6 +32,7 @@ import { useSubscription } from "@/hooks/use-subscription";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
 import { formatText } from "@/lib/utils";
+import { SubscriptionExpiryBanner } from "@/components/subscription-expiry-banner";
 
 export default function AdminPage() {
   const { user, loading: authLoading, logout } = useAuth();
@@ -257,6 +258,7 @@ export default function AdminPage() {
       </header>
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 sm:py-8">
+        <SubscriptionExpiryBanner />
         {/* Upgrade Banner for Free Users */}
         {!authLoading && !isPro && (
           <div className="mb-4 sm:mb-6">

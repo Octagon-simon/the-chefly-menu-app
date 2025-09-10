@@ -11,13 +11,13 @@ export const UpgradeBanner = ({ message, onUpgrade }: UpgradeBannerProps) => {
   if (dismissed) return null;
 
   return (
-    <div className="bg-gradient-to-r from-yellow-400 to-yellow-500 text-white p-4 rounded-lg mb-6 relative">
+    <div className="bg-gradient-to-r from-yellow-500 to-yellow-600 text-white p-4 rounded-lg mb-6 relative">
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-3">
           <Crown className="h-6 w-6" />
           <div>
             <h3 className="font-semibold">Upgrade to Pro</h3>
-            <p className="text-sm opacity-90">{message}</p>
+            <p className="text-sm">{message}</p>
           </div>
         </div>
         <div className="flex items-center gap-2">
