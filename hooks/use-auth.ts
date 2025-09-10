@@ -14,6 +14,8 @@ import { auth } from "@/lib/firebase";
 import { generateRandomUsername, generateSlug } from "@/lib/utils";
 import type { User, UserSubscription } from "@/types/menu";
 
+const baseUrl = process.env.NEXT_PUBLIC_APP_URL || "https://cheflymenu.app";
+
 export const useAuth = () => {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
@@ -63,6 +65,28 @@ export const useAuth = () => {
         subscription: { plan: subscription.plan }, // expose only plan in public
         createdAt: now,
       });
+      try {
+        await fetch("api/send-email", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            to: firebaseUser.email!,
+            template: "welcome",
+            subject:
+              "🎉 Welcome to CheflyMenu - Your Digital Menu Journey Starts Here!",
+            variables: {
+              user: username,
+              app_url: `${baseUrl}/admin`,
+              upgrade_url: `${baseUrl}/upgrade`,
+            },
+          }),
+        });
+      } catch (emailError) {
+        console.error("❌ Failed to send welcome email:", emailError);
+        // Don't fail user creation if email fails
+      }
 
       return userData;
     } catch (err) {
