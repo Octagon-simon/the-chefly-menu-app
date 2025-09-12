@@ -18,8 +18,8 @@ import type { MenuItem } from "@/types/menu";
 import Image from "next/image";
 import type { ItemDetailModalProps, MenuDisplayProps } from "./types";
 import { debounce } from "lodash";
-import { QRCodeComponent } from "./qr-code";
 import ShareOrInstallButton from "./share-or-install-button";
+import { QRCodeComponent } from "./qr-code";
 
 export const MenuDisplay = ({
   user,
@@ -439,6 +439,11 @@ export const MenuDisplay = ({
                             +{item.images.length - 1} photos
                           </Badge>
                         )}
+                      {item.isCombo && (
+                        <Badge className="absolute top-2 left-2 bg-[#d97706] text-white px-2 py-1 rounded text-xs font-medium">
+                          Combo
+                        </Badge>
+                      )}
                     </div>
                   )}
                   <CardContent className="flex-1 p-8">
@@ -468,10 +473,38 @@ export const MenuDisplay = ({
                       </div>
                     </div>
                     {item.description && (
-                      <p className="text-muted-foreground text-lg leading-relaxed text-pretty first-letter:uppercase">
+                      <p className="text-muted-foreground text-lg leading-relaxed text-pretty first-letter:uppercase mb-4">
                         {capitalizeFirstLetter(item.description)}
                       </p>
                     )}
+                    {item.isCombo &&
+                      item.subItems &&
+                      item.subItems.length > 0 && (
+                        <div className="">
+                          <p className="text-sm text-gray-500 mb-1">
+                            Combo options:
+                          </p>
+                          <div className="flex flex-wrap gap-1">
+                            {item.subItems.slice(0, 3).map((subItem) => (
+                              <span
+                                key={subItem.id}
+                                className="text-xs px-2 py-1 rounded"
+                                style={{
+                            backgroundColor: `${secondaryColor}20`,
+                            color: secondaryColor,
+                          }}
+                              >
+                                {subItem.name}
+                              </span>
+                            ))}
+                            {item.subItems.length > 3 && (
+                              <span className="text-xs self-center text-gray-500">
+                                +{item.subItems.length - 3} more
+                              </span>
+                            )}
+                          </div>
+                        </div>
+                      )}
                   </CardContent>
                 </div>
               </Card>
@@ -614,10 +647,38 @@ const ItemDetailModal = ({
               </p>
             )}
 
+            {item.isCombo && item.subItems && item.subItems.length > 0 && (
+              <div className="mb-6">
+                <h3 className="text-sm font-semibold text-foreground mb-3">
+                  Available Combos:
+                </h3>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                  {item.subItems.map((subItem) => (
+                    <div
+                      key={subItem.id}
+                      className="flex justify-between items-center p-3 bg-gray-50 rounded-lg border"
+                    >
+                      <span className="text-sm font-medium text-foreground">
+                        {subItem.name}
+                      </span>
+                      <span
+                        className="text-sm font-semibold"
+                        style={{ color: secondaryColor }}
+                      >
+                        {subItem.price
+                          ? `+${formatPrice(subItem.price)}`
+                          : "Free"}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
             <div className="flex justify-between items-start sm:items-center gap-4">
               <Badge
                 variant="secondary"
-                className="text-xs border-0"
+                className="text-xs border-0 self-center"
                 style={{
                   backgroundColor: `${secondaryColor}20`,
                   color: secondaryColor,
