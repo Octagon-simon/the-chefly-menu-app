@@ -144,10 +144,22 @@ export const useMenu = () => {
 
     try {
       const db = getDatabase();
-      const updatedItem = {
+      const updatedItem: any = {
         ...item,
         updatedAt: new Date().toISOString(),
       };
+
+      // If isCombo is false, remove subItems entirely
+      if (!updatedItem.isCombo) {
+        delete updatedItem.subItems;
+      }
+
+      // Remove any undefined values to prevent Firebase errors
+      Object.keys(updatedItem).forEach((key) => {
+        if (updatedItem[key] === undefined) {
+          delete updatedItem[key];
+        }
+      });
 
       await update(ref(db, `menuItems/${id}`), updatedItem);
 
@@ -157,7 +169,6 @@ export const useMenu = () => {
         )
       );
 
-      //update meta data last updated
       await metadataCache.updateMetadata(user.id);
 
       return { success: true };

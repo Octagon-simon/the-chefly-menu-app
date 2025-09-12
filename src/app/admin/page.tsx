@@ -12,6 +12,7 @@ import { SubscriptionBadge } from "@/components/subscription-badge";
 import { UpgradeBanner } from "@/components/upgrade-banner";
 import { QRCodeGenerator } from "@/components/qr-code-generator";
 import { CategoryForm } from "@/components/category-form";
+import { SubscriptionExpiryBanner } from "@/components/subscription-expiry-banner";
 import type { MenuItem, Category } from "@/types/menu";
 import {
   Plus,
@@ -32,16 +33,10 @@ import { useSubscription } from "@/hooks/use-subscription";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
 import { formatText } from "@/lib/utils";
-import { SubscriptionExpiryBanner } from "@/components/subscription-expiry-banner";
 
 export default function AdminPage() {
   const { user, loading: authLoading, logout } = useAuth();
-  const {
-    isPro,
-    isExpired,
-    loading: subscriptionLoading,
-    hasSubscribedBefore,
-  } = useSubscription();
+  const { isPro, isExpired, loading: subscriptionLoading } = useSubscription();
   const {
     menuItems,
     categories,
@@ -259,6 +254,7 @@ export default function AdminPage() {
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 sm:py-8">
         <SubscriptionExpiryBanner />
+
         {/* Upgrade Banner for Free Users */}
         {!authLoading && !isPro && (
           <div className="mb-4 sm:mb-6">
@@ -303,7 +299,7 @@ export default function AdminPage() {
         )}
 
         {/* Free Plan Limit Warning */}
-        {!isPro && !hasSubscribedBefore && menuItems.length >= 4 && (
+        {!isPro && menuItems.length >= 4 && (
           <div className="mb-4 sm:mb-6 p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
             <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
               <div>
@@ -473,6 +469,11 @@ export default function AdminPage() {
                           +{item.images.length - 1} more
                         </div>
                       )}
+                      {item.isCombo && (
+                        <div className="absolute top-2 left-2 bg-blue-500 text-white px-2 py-1 rounded text-xs font-medium">
+                          Combo
+                        </div>
+                      )}
                     </div>
                     <div className="p-3 sm:p-4">
                       <h3 className="font-semibold text-base sm:text-lg text-gray-800 mb-2 line-clamp-2">
@@ -483,6 +484,30 @@ export default function AdminPage() {
                           {item.description}
                         </p>
                       )}
+                      {item.isCombo &&
+                        item.subItems &&
+                        item.subItems.length > 0 && (
+                          <div className="mb-3">
+                            <p className="text-sm text-gray-500 mb-1">
+                              Combo options:
+                            </p>
+                            <div className="flex flex-wrap gap-1">
+                              {item.subItems.slice(0, 3).map((subItem) => (
+                                <span
+                                  key={subItem.id}
+                                  className="text-xs bg-blue-100 text-blue-700 px-2 py-1 rounded"
+                                >
+                                  {subItem.name}
+                                </span>
+                              ))}
+                              {item.subItems.length > 3 && (
+                                <span className="text-xs text-gray-500 self-center">
+                                  +{item.subItems.length - 3} more
+                                </span>
+                              )}
+                            </div>
+                          </div>
+                        )}
                       <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-2 mb-4">
                         <span className="text-xl sm:text-2xl font-bold text-green-600">
                           ₦{item.price.toLocaleString()}
@@ -518,7 +543,7 @@ export default function AdminPage() {
         {activeTab === "categories" && (
           <div className="space-y-6">
             <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4">
-              <h2 className="text-lg sm:text-xl font-bold text-gray-900">
+              <h2 className="text-lg sm:text-xl font-bold text-gray-900 mb-2">
                 Manage Categories
               </h2>
               <Button

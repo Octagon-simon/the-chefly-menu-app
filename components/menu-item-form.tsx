@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { Checkbox } from "@/components/ui/checkbox";
 import {
   Select,
   SelectContent,
@@ -16,6 +17,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { UpgradeBanner } from "@/components/upgrade-banner";
+import { ComboForm } from "@/components/combo-form";
 import { X, Upload, Trash2 } from "lucide-react";
 import { toast } from "react-toastify";
 import { useRouter } from "next/navigation";
@@ -37,6 +39,8 @@ export const MenuItemForm = ({
     price: item?.price || 0,
     category: item?.category || "",
     images: item?.images || [],
+    isCombo: item?.isCombo || false,
+    subItems: item?.subItems || [],
   });
   const [loading, setLoading] = useState(false);
   const [uploadingImage, setUploadingImage] = useState(false);
@@ -115,6 +119,11 @@ export const MenuItemForm = ({
       return;
     }
 
+    if (formData.isCombo && formData.subItems.length === 0) {
+      alert("Please add at least one combo item");
+      return;
+    }
+
     setLoading(true);
 
     const itemData = {
@@ -123,6 +132,8 @@ export const MenuItemForm = ({
       price: Number(formData.price),
       category: formData.category,
       images: formData.images,
+      isCombo: formData.isCombo,
+      subItems: formData.isCombo ? formData.subItems : undefined,
       createdAt: item?.createdAt || new Date().toISOString(),
       updatedAt: new Date().toISOString(),
       available: typeof item?.available === "boolean" ? item.available : true,
@@ -237,6 +248,34 @@ export const MenuItemForm = ({
               placeholder="Describe your menu item..."
               rows={3}
             />
+          </div>
+
+          <div className="space-y-4">
+            <div className="flex items-center space-x-2">
+              <Checkbox
+                id="isCombo"
+                checked={formData.isCombo}
+                onCheckedChange={(checked) =>
+                  setFormData({
+                    ...formData,
+                    isCombo: checked as boolean,
+                    subItems: checked ? formData.subItems : [],
+                  })
+                }
+              />
+              <Label htmlFor="isCombo" className="text-sm font-medium">
+                This item has combo options (e.g., add-ons, sides, extras)
+              </Label>
+            </div>
+
+            {formData.isCombo && (
+              <ComboForm
+                subItems={formData.subItems}
+                onSubItemsChange={(subItems) =>
+                  setFormData({ ...formData, subItems })
+                }
+              />
+            )}
           </div>
 
           <div>
