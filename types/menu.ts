@@ -6,6 +6,16 @@ export interface MenuItem {
   category: string;
   images: string[];
   available: boolean;
+  isCombo?: boolean;
+  subItems?: SubItem[];
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface SubItem {
+  id: string;
+  name: string;
+  price?: number;
   createdAt: string;
   updatedAt: string;
 }
