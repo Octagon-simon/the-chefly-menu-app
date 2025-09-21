@@ -4,7 +4,7 @@ import { useState } from "react";
 import { useAuth } from "@/hooks/use-auth";
 import { useMenu } from "@/hooks/use-menu";
 import { useBrand } from "@/hooks/use-brand";
-import { useOrders } from "@/hooks/use-orders";
+import { useOrders } from "@/hooks/use-ephemeral-orders";
 import { AdminLogin } from "@/components/admin-login";
 import { MenuItemForm } from "@/components/menu-item-form";
 import { BrandSettings } from "@/components/brand-settings";
@@ -745,6 +745,106 @@ export default function AdminPage() {
 
         {activeTab === "orders" && hasOrderingFeature && (
           <div className="space-y-6">
+            <div className="flex justify-end flex-col sm:flex-row sm:items-center gap-4">
+              <div className="flex flex-wrap gap-2">
+                <Button
+                  onClick={() => setShowOrderForm(true)}
+                  className="flex items-center gap-2 px-4 py-2 text-sm"
+                >
+                  <Plus size={18} />
+                  Create Manual Order
+                </Button>
+                <Button
+                  onClick={() => setShowExportOptions(!showExportOptions)}
+                  variant="outline"
+                  className="flex items-center gap-2 px-4 py-2 text-sm"
+                >
+                  <Download size={18} />
+                  Export Orders
+                </Button>
+              </div>
+            </div>
+
+            {showExportOptions && (
+              <div className="bg-white p-4 rounded-lg shadow-md border">
+                <h3 className="font-semibold text-gray-900 mb-4 flex items-center gap-2">
+                  <FileText size={18} />
+                  Export Options
+                </h3>
+
+                {/* Date Range Filter */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
+                  <div>
+                    <Label
+                      htmlFor="startDate"
+                      className="flex items-center gap-2"
+                    >
+                      <Calendar size={14} />
+                      Start Date (Optional)
+                    </Label>
+                    <Input
+                      id="startDate"
+                      type="date"
+                      value={exportStartDate}
+                      onChange={(e) => setExportStartDate(e.target.value)}
+                      className="mt-1"
+                    />
+                  </div>
+                  <div>
+                    <Label
+                      htmlFor="endDate"
+                      className="flex items-center gap-2"
+                    >
+                      <Calendar size={14} />
+                      End Date (Optional)
+                    </Label>
+                    <Input
+                      id="endDate"
+                      type="date"
+                      value={exportEndDate}
+                      onChange={(e) => setExportEndDate(e.target.value)}
+                      className="mt-1"
+                    />
+                  </div>
+                </div>
+
+                {/* Export Buttons */}
+                <div className="flex flex-wrap gap-2">
+                  <Button
+                    onClick={() => handleExportOrders("all")}
+                    className="flex items-center gap-2 text-sm"
+                  >
+                    <Download size={14} />
+                    Export All Orders
+                  </Button>
+                  {selectedOrderStatus !== "All" && (
+                    <Button
+                      onClick={() => handleExportOrders("filtered")}
+                      variant="outline"
+                      className="flex items-center gap-2 text-sm"
+                    >
+                      <Download size={14} />
+                      Export {selectedOrderStatus} Orders
+                    </Button>
+                  )}
+                  <Button
+                    onClick={() => handleExportOrders("summary")}
+                    variant="outline"
+                    className="flex items-center gap-2 text-sm"
+                  >
+                    <FileText size={14} />
+                    Export Summary
+                  </Button>
+                  <Button
+                    onClick={() => setShowExportOptions(false)}
+                    variant="ghost"
+                    className="text-sm"
+                  >
+                    Cancel
+                  </Button>
+                </div>
+              </div>
+            )}
             {/* Order Summary Cards */}
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
               <div className="bg-white p-4 rounded-lg shadow-md">
@@ -828,107 +928,6 @@ export default function AdminPage() {
                   </button>
                 ))}
               </div>
-
-              <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4">
-                <div className="flex flex-wrap gap-2">
-                  <Button
-                    onClick={() => setShowOrderForm(true)}
-                    className="flex items-center gap-2 px-4 py-2 text-sm"
-                  >
-                    <Plus size={18} />
-                    Create Manual Order
-                  </Button>
-                  <Button
-                    onClick={() => setShowExportOptions(!showExportOptions)}
-                    variant="outline"
-                    className="flex items-center gap-2 px-4 py-2 text-sm"
-                  >
-                    <Download size={18} />
-                    Export Orders
-                  </Button>
-                </div>
-              </div>
-
-              {showExportOptions && (
-                <div className="bg-white p-4 rounded-lg shadow-md border">
-                  <h3 className="font-semibold text-gray-900 mb-4 flex items-center gap-2">
-                    <FileText size={18} />
-                    Export Options
-                  </h3>
-
-                  {/* Date Range Filter */}
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
-                    <div>
-                      <Label
-                        htmlFor="startDate"
-                        className="flex items-center gap-2"
-                      >
-                        <Calendar size={14} />
-                        Start Date (Optional)
-                      </Label>
-                      <Input
-                        id="startDate"
-                        type="date"
-                        value={exportStartDate}
-                        onChange={(e) => setExportStartDate(e.target.value)}
-                        className="mt-1"
-                      />
-                    </div>
-                    <div>
-                      <Label
-                        htmlFor="endDate"
-                        className="flex items-center gap-2"
-                      >
-                        <Calendar size={14} />
-                        End Date (Optional)
-                      </Label>
-                      <Input
-                        id="endDate"
-                        type="date"
-                        value={exportEndDate}
-                        onChange={(e) => setExportEndDate(e.target.value)}
-                        className="mt-1"
-                      />
-                    </div>
-                  </div>
-
-                  {/* Export Buttons */}
-                  <div className="flex flex-wrap gap-2">
-                    <Button
-                      onClick={() => handleExportOrders("all")}
-                      className="flex items-center gap-2 text-sm"
-                    >
-                      <Download size={14} />
-                      Export All Orders
-                    </Button>
-                    {selectedOrderStatus !== "All" && (
-                      <Button
-                        onClick={() => handleExportOrders("filtered")}
-                        variant="outline"
-                        className="flex items-center gap-2 text-sm"
-                      >
-                        <Download size={14} />
-                        Export {selectedOrderStatus} Orders
-                      </Button>
-                    )}
-                    <Button
-                      onClick={() => handleExportOrders("summary")}
-                      variant="outline"
-                      className="flex items-center gap-2 text-sm"
-                    >
-                      <FileText size={14} />
-                      Export Summary
-                    </Button>
-                    <Button
-                      onClick={() => setShowExportOptions(false)}
-                      variant="ghost"
-                      className="text-sm"
-                    >
-                      Cancel
-                    </Button>
-                  </div>
-                </div>
-              )}
             </div>
 
             {/* Orders List */}

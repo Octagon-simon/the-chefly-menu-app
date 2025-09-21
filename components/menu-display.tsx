@@ -31,6 +31,7 @@ import { hasFeatureAccess } from "@/lib/features";
 import { QRCodeComponent } from "./qr-code";
 import ShareOrInstallButton from "./share-or-install-button";
 import type { OrderItem } from "@/types/order";
+import { useOrders } from "@/hooks/use-ephemeral-orders";
 
 export const MenuDisplay = ({
   user,
@@ -947,6 +948,8 @@ const CartModal = ({
     address: "",
     notes: "",
   });
+  const { createOrder } = useOrders();
+  const [isSubmittingOrder, setIsSubmittingOrder] = useState(false);
 
   const cartTotal = cart.reduce((sum, item) => sum + item.totalPrice, 0);
   const cartItemCount = cart.reduce((sum, item) => sum + item.quantity, 0);
@@ -983,7 +986,7 @@ const CartModal = ({
     return `https://wa.me/${cleanNumber}?text=${encodedMessage}`;
   };
 
-  const handleManualOrder = () => {
+  const handleManualOrder = async () => {
     if (
       !customerInfo.name.trim() ||
       !customerInfo.phone.trim() ||
@@ -993,22 +996,55 @@ const CartModal = ({
       return;
     }
 
-    // Here you would typically send the order to your backend
-    // For now, we'll just show a success message
-    alert(
-      `Manual order placed successfully!\n\nCustomer: ${
-        customerInfo.name
-      }\nPhone: ${customerInfo.phone}\nAddress: ${
-        customerInfo.address
-      }\nTotal: ${formatPrice(cartTotal)}`
-    );
+    setIsSubmittingOrder(true);
+    try {
+      const orderItems = cart.map((item) => ({
+        id: item.id,
+        menuItemId: item.menuItemId,
+        name: item.name,
+        price: item.price,
+        quantity: item.quantity,
+        selectedCombos: item.selectedCombos,
+        totalPrice: item.totalPrice,
+      }));
 
-    onClearCart();
-    setShowManualOrderForm(false);
-    setShowCart(false);
+      const customer = {
+        name: customerInfo.name.trim(),
+        phone: customerInfo.phone.trim(),
+        address: customerInfo.address.trim(),
+      };
+
+      const result = await createOrder(
+        customer,
+        orderItems,
+        customerInfo.notes.trim() || undefined
+      );
+
+      if (result.success) {
+        alert(
+          `Manual order placed successfully!\\n\\nOrder ID: ${
+            result.orderId
+          }\\nCustomer: ${customerInfo.name}\\nPhone: ${
+            customerInfo.phone
+          }\\nAddress: ${customerInfo.address}\\nTotal: ${formatPrice(
+            cartTotal
+          )}\\n\\nYour order has been saved and will be processed shortly.`
+        );
+
+        setCustomerInfo({ name: "", phone: "", address: "", notes: "" });
+        onClearCart();
+        setShowManualOrderForm(false);
+        setShowCart(false);
+      } else {
+        alert(`Failed to place order: ${result.error || "Unknown error"}`);
+      }
+    } catch (error) {
+      console.error("Error placing manual order:", error);
+      alert("Failed to place order. Please try again.");
+    } finally {
+      setIsSubmittingOrder(false);
+    }
   };
-
-  if (!hasWhatsAppFeature || !hasWhatsAppFeature) return null;
 
   if (!showCart) {
     return (
@@ -1041,7 +1077,6 @@ const CartModal = ({
               </Button>
             </div>
 
-            {/* Order Summary */}
             <div className="mb-6">
               <h3 className="font-semibold mb-3">Order Summary</h3>
               <div className="space-y-2 max-h-40 overflow-y-auto">
@@ -1079,7 +1114,6 @@ const CartModal = ({
               </div>
             </div>
 
-            {/* Customer Information Form */}
             <div className="space-y-4">
               <div>
                 <label className="block text-sm font-medium mb-1">
@@ -1162,8 +1196,9 @@ const CartModal = ({
                 onClick={handleManualOrder}
                 className="flex-1 text-white"
                 style={{ backgroundColor: primaryColor }}
+                disabled={isSubmittingOrder}
               >
-                Place Manual Order
+                {isSubmittingOrder ? "Placing Order..." : "Place Manual Order"}
               </Button>
             </div>
           </CardContent>

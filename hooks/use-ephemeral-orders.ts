@@ -12,26 +12,23 @@ import {
   orderByChild,
   equalTo,
 } from "firebase/database";
-import type { Order, OrderItem, Customer, OrderSummary } from "@/types/order";
+import type { EphemeralOrder } from "@/types/analytics";
+import type { Customer, OrderItem } from "@/types/order";
 import { useAuth } from "./use-auth";
+import { useAnalytics } from "./use-analytics";
 
-export const useOrders = () => {
+export const useEphemeralOrders = () => {
   const { user } = useAuth();
-  const [orders, setOrders] = useState<Order[]>([]);
+  const { updateAnalytics } = useAnalytics();
+  const [orders, setOrders] = useState<EphemeralOrder[]>([]);
   const [loading, setLoading] = useState(true);
-  const [summary, setSummary] = useState<OrderSummary>({
-    totalOrders: 0,
-    pendingOrders: 0,
-    completedOrders: 0,
-    totalRevenue: 0,
-  });
 
   const fetchOrders = async () => {
     if (!user?.id) return;
 
     try {
       setLoading(true);
-      const ordersRef = ref(db, "orders");
+      const ordersRef = ref(db, "ephemeralOrders");
       const userOrdersQuery = query(
         ordersRef,
         orderByChild("userId"),
@@ -41,50 +38,29 @@ export const useOrders = () => {
 
       if (snapshot.exists()) {
         const ordersData = snapshot.val();
-        const ordersList: Order[] = Object.entries(ordersData).map(
+        const ordersList: EphemeralOrder[] = Object.entries(ordersData).map(
           ([id, data]: [string, any]) => ({
             id,
             ...data,
           })
         );
 
+        // Filter out expired orders (they should be auto-deleted but just in case)
+        const now = new Date().toISOString();
+        const validOrders = ordersList.filter((order) => order.expiresAt > now);
+
         // Sort by creation date (newest first)
-        ordersList.sort(
+        validOrders.sort(
           (a, b) =>
             new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
         );
 
-        setOrders(ordersList);
-
-        // Calculate summary
-        const totalOrders = ordersList.length;
-        const pendingOrders = ordersList.filter((order) =>
-          ["pending", "confirmed", "preparing", "ready"].includes(order.status)
-        ).length;
-        const completedOrders = ordersList.filter(
-          (order) => order.status === "completed"
-        ).length;
-        const totalRevenue = ordersList
-          .filter((order) => order.status === "completed")
-          .reduce((sum, order) => sum + order.totalAmount, 0);
-
-        setSummary({
-          totalOrders,
-          pendingOrders,
-          completedOrders,
-          totalRevenue,
-        });
+        setOrders(validOrders);
       } else {
         setOrders([]);
-        setSummary({
-          totalOrders: 0,
-          pendingOrders: 0,
-          completedOrders: 0,
-          totalRevenue: 0,
-        });
       }
     } catch (error) {
-      console.error("Error fetching orders:", error);
+      console.error("Error fetching ephemeral orders:", error);
     } finally {
       setLoading(false);
     }
@@ -101,49 +77,75 @@ export const useOrders = () => {
 
     try {
       const totalAmount = items.reduce((sum, item) => sum + item.totalPrice, 0);
-      const now = new Date().toISOString();
+      const now = new Date();
+      const expiresAt = new Date(now.getTime() + 5 * 24 * 60 * 60 * 1000); // 5 days from now
 
-      const newOrder: Omit<Order, "id"> = {
+      const newOrder: Omit<EphemeralOrder, "id"> = {
         userId: user.id,
         customer,
         items,
         totalAmount,
         status: "pending",
         notes,
-        createdAt: now,
-        updatedAt: now,
+        createdAt: now.toISOString(),
+        updatedAt: now.toISOString(),
+        expiresAt: expiresAt.toISOString(),
       };
 
-      const ordersRef = ref(db, "orders");
+      const ordersRef = ref(db, "ephemeralOrders");
       const orderRef = await push(ordersRef, newOrder);
 
       if (orderRef.key) {
+        // Update analytics
+        await updateAnalytics(user.id, "create");
+
         await fetchOrders(); // Refresh orders list
         return { success: true, orderId: orderRef.key };
       } else {
         return { success: false, error: "Failed to create order" };
       }
     } catch (error) {
-      console.error("Error creating order:", error);
+      console.error("Error creating ephemeral order:", error);
       return { success: false, error: "Failed to create order" };
     }
   };
 
   const updateOrderStatus = async (
     orderId: string,
-    status: Order["status"]
+    newStatus: EphemeralOrder["status"]
   ): Promise<{ success: boolean; error?: string }> => {
     try {
-      const orderRef = ref(db, `orders/${orderId}`);
+      // Get current order to track old status
+      const orderRef = ref(db, `ephemeralOrders/${orderId}`);
+      const snapshot = await get(orderRef);
+
+      if (!snapshot.exists()) {
+        return { success: false, error: "Order not found" };
+      }
+
+      const currentOrder = snapshot.val() as EphemeralOrder;
+      const oldStatus = currentOrder.status;
+
       await update(orderRef, {
-        status,
+        status: newStatus,
         updatedAt: new Date().toISOString(),
       });
+
+      // Update analytics with status change
+      if (user?.id) {
+        await updateAnalytics(
+          user.id,
+          "statusChange",
+          oldStatus,
+          newStatus,
+          currentOrder.totalAmount
+        );
+      }
 
       await fetchOrders(); // Refresh orders list
       return { success: true };
     } catch (error) {
-      console.error("Error updating order status:", error);
+      console.error("Error updating ephemeral order status:", error);
       return { success: false, error: "Failed to update order status" };
     }
   };
@@ -152,13 +154,13 @@ export const useOrders = () => {
     orderId: string
   ): Promise<{ success: boolean; error?: string }> => {
     try {
-      const orderRef = ref(db, `orders/${orderId}`);
+      const orderRef = ref(db, `ephemeralOrders/${orderId}`);
       await remove(orderRef);
 
       await fetchOrders(); // Refresh orders list
       return { success: true };
     } catch (error) {
-      console.error("Error deleting order:", error);
+      console.error("Error deleting ephemeral order:", error);
       return { success: false, error: "Failed to delete order" };
     }
   };
@@ -172,7 +174,6 @@ export const useOrders = () => {
   return {
     orders,
     loading,
-    summary,
     createOrder,
     updateOrderStatus,
     deleteOrder,
