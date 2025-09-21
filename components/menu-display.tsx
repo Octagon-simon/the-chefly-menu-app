@@ -31,7 +31,8 @@ import { hasFeatureAccess } from "@/lib/features";
 import { QRCodeComponent } from "./qr-code";
 import ShareOrInstallButton from "./share-or-install-button";
 import type { OrderItem } from "@/types/order";
-import { useOrders } from "@/hooks/use-ephemeral-orders";
+import { useOrders } from "@/hooks/use-orders";
+import { toast } from "sonner";
 
 export const MenuDisplay = ({
   user,
@@ -992,7 +993,7 @@ const CartModal = ({
       !customerInfo.phone.trim() ||
       !customerInfo.address.trim()
     ) {
-      alert("Please fill in all required customer details");
+      toast.error("Please fill in all required customer details");
       return;
     }
 
@@ -1021,26 +1022,21 @@ const CartModal = ({
       );
 
       if (result.success) {
-        alert(
-          `Manual order placed successfully!\\n\\nOrder ID: ${
-            result.orderId
-          }\\nCustomer: ${customerInfo.name}\\nPhone: ${
-            customerInfo.phone
-          }\\nAddress: ${customerInfo.address}\\nTotal: ${formatPrice(
-            cartTotal
-          )}\\n\\nYour order has been saved and will be processed shortly.`
+        toast.success(
+          "Your order has been saved and will be processed shortly."
         );
-
         setCustomerInfo({ name: "", phone: "", address: "", notes: "" });
         onClearCart();
         setShowManualOrderForm(false);
         setShowCart(false);
       } else {
-        alert(`Failed to place order: ${result.error || "Unknown error"}`);
+        toast.error(
+          `Failed to place order: ${result.error || "Unknown error"}`
+        );
       }
     } catch (error) {
       console.error("Error placing manual order:", error);
-      alert("Failed to place order. Please try again.");
+      toast.error("Failed to place order. Please try again.");
     } finally {
       setIsSubmittingOrder(false);
     }

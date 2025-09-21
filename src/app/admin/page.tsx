@@ -1,10 +1,10 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useAuth } from "@/hooks/use-auth";
 import { useMenu } from "@/hooks/use-menu";
 import { useBrand } from "@/hooks/use-brand";
-import { useOrders } from "@/hooks/use-ephemeral-orders";
+import { useOrders } from "@/hooks/use-orders";
 import { AdminLogin } from "@/components/admin-login";
 import { MenuItemForm } from "@/components/menu-item-form";
 import { BrandSettings } from "@/components/brand-settings";
@@ -33,26 +33,20 @@ import {
   CheckCircle,
   AlertCircle,
   Package,
-  Truck,
   Download,
-  FileText,
-  Calendar,
 } from "lucide-react";
 import Image from "next/image";
-import { toast } from "react-toastify";
 import { useRouter } from "next/navigation";
 import { useSubscription } from "@/hooks/use-subscription";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import Link from "next/link";
 import {
   exportOrdersToCSV,
   exportOrdersSummaryToCSV,
   filterOrdersByDateRange,
 } from "@/lib/utils";
-import { hasFeatureAccess } from "@/lib/features";
+import { toast } from "sonner";
 
 export default function AdminPage() {
   const { user, loading: authLoading, logout } = useAuth();
@@ -88,24 +82,26 @@ export default function AdminPage() {
   const [editingItem, setEditingItem] = useState<MenuItem | null>(null);
   const [selectedCategory, setSelectedCategory] = useState<string>("All");
   const [activeTab, setActiveTab] = useState<
-    "menu" | "brand" | "categories" | "qr" | "orders"
+    "menu" | "brand" | "categories" | "qr" | "orders" | "analytics"
   >("menu");
   const [showCategoryForm, setShowCategoryForm] = useState(false);
   const [editingCategory, setEditingCategory] = useState<Category | null>(null);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [showOrderForm, setShowOrderForm] = useState(false);
   const [selectedOrderStatus, setSelectedOrderStatus] = useState<string>("All");
-  const [exportStartDate, setExportStartDate] = useState<string>("");
-  const [exportEndDate, setExportEndDate] = useState<string>("");
+  const [exportStartDate, _setExportStartDate] = useState<string>("");
+  const [exportEndDate, _setExportEndDate] = useState<string>("");
   const [showExportOptions, setShowExportOptions] = useState(false);
+
+  const [currentPage, setCurrentPage] = useState(1);
+  const [ordersPerPage] = useState(10);
+
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [selectedOrderStatus]);
 
   if (authLoading || subscriptionLoading) return <LoadingSpinner />;
   if (!user) return <AdminLogin />;
-
-  // const hasOrderingFeature = hasFeatureAccess(subscription?.features || [], [
-  //   "manual_ordering",
-  //   "whatsapp_ordering",
-  // ]);
 
   const hasOrderingFeature = ["whatsapp_ordering", "manual_ordering"].some(
     (f) => (subscription?.features ?? []).includes(f)
@@ -121,7 +117,21 @@ export default function AdminPage() {
       ? orders
       : orders.filter((order) => order.status === selectedOrderStatus);
 
-  const handleExportOrders = (type: "all" | "filtered" | "summary") => {
+  const indexOfLastOrder = currentPage * ordersPerPage;
+  const indexOfFirstOrder = indexOfLastOrder - ordersPerPage;
+  const currentOrders = filteredOrders.slice(
+    indexOfFirstOrder,
+    indexOfLastOrder
+  );
+  const totalPages = Math.ceil(filteredOrders.length / ordersPerPage);
+
+  const handlePageChange = (page: number) => {
+    setCurrentPage(page);
+  };
+
+  const handleExportOrders = (
+    type: "all" | "filtered" | "summary" | "csv" | "json"
+  ) => {
     let ordersToExport = orders;
 
     // Apply date range filter if specified
@@ -158,9 +168,9 @@ export default function AdminPage() {
         }.csv`
       );
       toast.success("Orders summary exported successfully!");
-    } else {
+    } else if (type === "csv") {
       const filename =
-        type === "filtered" && selectedOrderStatus !== "All"
+        selectedOrderStatus !== "All"
           ? `orders-${selectedOrderStatus}${dateRangeText}_${
               new Date().toISOString().split("T")[0]
             }.csv`
@@ -169,6 +179,28 @@ export default function AdminPage() {
             }.csv`;
 
       exportOrdersToCSV(ordersToExport, filename);
+      toast.success("Orders exported successfully!");
+    } else if (type === "json") {
+      const filename =
+        selectedOrderStatus !== "All"
+          ? `orders-${selectedOrderStatus}${dateRangeText}_${
+              new Date().toISOString().split("T")[0]
+            }.json`
+          : `orders-all${dateRangeText}_${
+              new Date().toISOString().split("T")[0]
+            }.json`;
+
+      const blob = new Blob([JSON.stringify(ordersToExport, null, 2)], {
+        type: "application/json",
+      });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = filename;
+      document.body.appendChild(a);
+      a.click();
+      URL.revokeObjectURL(url);
+      document.body.removeChild(a);
       toast.success("Orders exported successfully!");
     }
 
@@ -521,22 +553,35 @@ export default function AdminPage() {
                 Menu Items
               </button>
               {hasOrderingFeature && (
-                <button
-                  onClick={() => setActiveTab("orders")}
-                  className={`py-2 px-1 border-b-2 font-medium text-sm flex items-center gap-1 whitespace-nowrap ${
-                    activeTab === "orders"
-                      ? "border-[#E44D26] text-[#E44D26]"
-                      : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
-                  }`}
-                >
-                  <ShoppingCart size={16} />
-                  Orders
-                  {summary.pendingOrders > 0 && (
-                    <Badge className="bg-red-500 text-white text-xs px-1 py-0 min-w-[16px] h-4 flex items-center justify-center">
-                      {summary.pendingOrders}
-                    </Badge>
-                  )}
-                </button>
+                <>
+                  <button
+                    onClick={() => setActiveTab("orders")}
+                    className={`py-2 px-1 border-b-2 font-medium text-sm flex items-center gap-1 whitespace-nowrap ${
+                      activeTab === "orders"
+                        ? "border-[#E44D26] text-[#E44D26]"
+                        : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
+                    }`}
+                  >
+                    <ShoppingCart size={16} />
+                    Orders
+                    {summary.pendingOrders > 0 && (
+                      <Badge className="bg-red-500 text-white text-xs px-1 py-0 min-w-[16px] h-4 flex items-center justify-center">
+                        {summary.pendingOrders}
+                      </Badge>
+                    )}
+                  </button>
+                  {/* <button
+                    onClick={() => setActiveTab("analytics")}
+                    className={`py-2 px-1 border-b-2 font-medium text-sm flex items-center gap-1 whitespace-nowrap ${
+                      activeTab === "analytics"
+                        ? "border-[#E44D26] text-[#E44D26]"
+                        : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
+                    }`}
+                  >
+                    <TrendingUp size={16} />
+                    Analytics
+                  </button> */}
+                </>
               )}
               <button
                 onClick={() => setActiveTab("categories")}
@@ -743,9 +788,37 @@ export default function AdminPage() {
           </>
         )}
 
-        {activeTab === "orders" && hasOrderingFeature && (
+        {activeTab === "orders" && (
           <div className="space-y-6">
-            <div className="flex justify-end flex-col sm:flex-row sm:items-center gap-4">
+            <div className="bg-amber-50 border border-amber-200 rounded-lg p-4">
+              <div className="flex items-start gap-3">
+                <div className="flex-shrink-0">
+                  <svg
+                    className="w-5 h-5 text-amber-600 mt-0.5"
+                    fill="currentColor"
+                    viewBox="0 0 20 20"
+                  >
+                    <path
+                      fillRule="evenodd"
+                      d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z"
+                      clipRule="evenodd"
+                    />
+                  </svg>
+                </div>
+                <div>
+                  <h3 className="text-sm font-medium text-amber-800">
+                    Data Retention Policy
+                  </h3>
+                  <p className="text-sm text-amber-700 mt-1">
+                    Orders older than 7 days are automatically deleted to
+                    protect customer privacy. Export important data regularly
+                    for your records.
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            <div className="flex flex-col sm:flex-row justify-end sm:items-center gap-4">
               <div className="flex flex-wrap gap-2">
                 <Button
                   onClick={() => setShowOrderForm(true)}
@@ -765,170 +838,61 @@ export default function AdminPage() {
               </div>
             </div>
 
+            {/* Order Status Filter */}
+            <div className="flex flex-wrap gap-2">
+              {[
+                "All",
+                "pending",
+                "confirmed",
+                "preparing",
+                "ready",
+                "completed",
+                "cancelled",
+              ].map((status) => (
+                <button
+                  key={status}
+                  onClick={() => setSelectedOrderStatus(status)}
+                  className={`px-3 py-2 rounded-full transition-colors text-sm ${
+                    selectedOrderStatus === status
+                      ? "bg-blue-600 text-white"
+                      : "bg-white text-gray-700 hover:bg-gray-100"
+                  }`}
+                >
+                  {status === "All"
+                    ? "All"
+                    : status.charAt(0).toUpperCase() + status.slice(1)}
+                  {status === "All" && ` (${filteredOrders.length})`}
+                  {status !== "All" &&
+                    ` (${
+                      filteredOrders.filter((order) => order.status === status)
+                        .length
+                    })`}
+                </button>
+              ))}
+            </div>
+
+            {/* Export Options */}
             {showExportOptions && (
-              <div className="bg-white p-4 rounded-lg shadow-md border">
-                <h3 className="font-semibold text-gray-900 mb-4 flex items-center gap-2">
-                  <FileText size={18} />
-                  Export Options
-                </h3>
-
-                {/* Date Range Filter */}
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
-                  <div>
-                    <Label
-                      htmlFor="startDate"
-                      className="flex items-center gap-2"
-                    >
-                      <Calendar size={14} />
-                      Start Date (Optional)
-                    </Label>
-                    <Input
-                      id="startDate"
-                      type="date"
-                      value={exportStartDate}
-                      onChange={(e) => setExportStartDate(e.target.value)}
-                      className="mt-1"
-                    />
-                  </div>
-                  <div>
-                    <Label
-                      htmlFor="endDate"
-                      className="flex items-center gap-2"
-                    >
-                      <Calendar size={14} />
-                      End Date (Optional)
-                    </Label>
-                    <Input
-                      id="endDate"
-                      type="date"
-                      value={exportEndDate}
-                      onChange={(e) => setExportEndDate(e.target.value)}
-                      className="mt-1"
-                    />
-                  </div>
-                </div>
-
-                {/* Export Buttons */}
+              <div className="bg-white border rounded-lg p-4 space-y-3">
+                <h3 className="font-medium text-gray-900">Export Options</h3>
                 <div className="flex flex-wrap gap-2">
                   <Button
-                    onClick={() => handleExportOrders("all")}
-                    className="flex items-center gap-2 text-sm"
-                  >
-                    <Download size={14} />
-                    Export All Orders
-                  </Button>
-                  {selectedOrderStatus !== "All" && (
-                    <Button
-                      onClick={() => handleExportOrders("filtered")}
-                      variant="outline"
-                      className="flex items-center gap-2 text-sm"
-                    >
-                      <Download size={14} />
-                      Export {selectedOrderStatus} Orders
-                    </Button>
-                  )}
-                  <Button
-                    onClick={() => handleExportOrders("summary")}
+                    size="sm"
                     variant="outline"
-                    className="flex items-center gap-2 text-sm"
+                    onClick={() => handleExportOrders("csv")}
                   >
-                    <FileText size={14} />
-                    Export Summary
+                    Export as CSV
                   </Button>
                   <Button
-                    onClick={() => setShowExportOptions(false)}
-                    variant="ghost"
-                    className="text-sm"
+                    size="sm"
+                    variant="outline"
+                    onClick={() => handleExportOrders("json")}
                   >
-                    Cancel
+                    Export as JSON
                   </Button>
                 </div>
               </div>
             )}
-            {/* Order Summary Cards */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-              <div className="bg-white p-4 rounded-lg shadow-md">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-sm text-gray-600">Total Orders</p>
-                    <p className="text-2xl font-bold text-gray-900">
-                      {summary.totalOrders}
-                    </p>
-                  </div>
-                  <ShoppingCart className="w-8 h-8 text-blue-500" />
-                </div>
-              </div>
-              <div className="bg-white p-4 rounded-lg shadow-md">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-sm text-gray-600">Pending Orders</p>
-                    <p className="text-2xl font-bold text-orange-600">
-                      {summary.pendingOrders}
-                    </p>
-                  </div>
-                  <Clock className="w-8 h-8 text-orange-500" />
-                </div>
-              </div>
-              <div className="bg-white p-4 rounded-lg shadow-md">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-sm text-gray-600">Completed Orders</p>
-                    <p className="text-2xl font-bold text-green-600">
-                      {summary.completedOrders}
-                    </p>
-                  </div>
-                  <CheckCircle className="w-8 h-8 text-green-500" />
-                </div>
-              </div>
-              <div className="bg-white p-4 rounded-lg shadow-md">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-sm text-gray-600">Total Revenue</p>
-                    <p className="text-2xl font-bold text-green-600">
-                      ₦{summary.totalRevenue.toLocaleString()}
-                    </p>
-                  </div>
-                  <Truck className="w-8 h-8 text-green-500" />
-                </div>
-              </div>
-            </div>
-
-            {/* Order Controls */}
-            <div className="flex flex-col gap-4">
-              <div className="flex flex-wrap gap-2">
-                <button
-                  onClick={() => setSelectedOrderStatus("All")}
-                  className={`px-3 sm:px-4 py-2 rounded-full transition-colors text-sm ${
-                    selectedOrderStatus === "All"
-                      ? "bg-black text-white"
-                      : "bg-white text-gray-700 hover:bg-gray-100"
-                  }`}
-                >
-                  All ({orders.length})
-                </button>
-                {[
-                  "pending",
-                  "confirmed",
-                  "preparing",
-                  "ready",
-                  "completed",
-                  "cancelled",
-                ].map((status) => (
-                  <button
-                    key={status}
-                    onClick={() => setSelectedOrderStatus(status)}
-                    className={`px-3 sm:px-4 py-2 rounded-full transition-colors text-sm capitalize ${
-                      selectedOrderStatus === status
-                        ? "bg-blue-600 text-white"
-                        : "bg-white text-gray-700 hover:bg-gray-100"
-                    }`}
-                  >
-                    {status} (
-                    {orders.filter((order) => order.status === status).length})
-                  </button>
-                ))}
-              </div>
-            </div>
 
             {/* Orders List */}
             {ordersLoading ? (
@@ -946,7 +910,7 @@ export default function AdminPage() {
               </div>
             ) : (
               <div className="space-y-4">
-                {filteredOrders.map((order) => (
+                {currentOrders.map((order) => (
                   <div
                     key={order.id}
                     className="bg-white rounded-lg shadow-md p-4 sm:p-6"
@@ -1091,10 +1055,58 @@ export default function AdminPage() {
                     </div>
                   </div>
                 ))}
+
+                {totalPages > 1 && (
+                  <div className="flex justify-center items-center gap-2 mt-6">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => handlePageChange(currentPage - 1)}
+                      disabled={currentPage === 1}
+                    >
+                      Previous
+                    </Button>
+
+                    <div className="flex gap-1">
+                      {Array.from({ length: totalPages }, (_, i) => i + 1).map(
+                        (page) => (
+                          <Button
+                            key={page}
+                            variant={
+                              currentPage === page ? "default" : "outline"
+                            }
+                            size="sm"
+                            onClick={() => handlePageChange(page)}
+                            className="w-10"
+                          >
+                            {page}
+                          </Button>
+                        )
+                      )}
+                    </div>
+
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => handlePageChange(currentPage + 1)}
+                      disabled={currentPage === totalPages}
+                    >
+                      Next
+                    </Button>
+                  </div>
+                )}
+
+                <div className="text-center text-sm text-gray-500">
+                  Showing {indexOfFirstOrder + 1} to{" "}
+                  {Math.min(indexOfLastOrder, filteredOrders.length)} of{" "}
+                  {filteredOrders.length} orders
+                </div>
               </div>
             )}
           </div>
         )}
+
+        {/* {activeTab === "analytics" && <AnalyticsDashboard />} */}
 
         {activeTab === "categories" && (
           <div className="space-y-6">

@@ -8,12 +8,12 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
 import { Plus, Minus, ShoppingCart, X } from "lucide-react";
 import { toast } from "react-toastify";
 import type { MenuItem } from "@/types/menu";
 import type { OrderItem, Customer } from "@/types/order";
 import { formatPrice } from "@/lib/utils";
+import { SearchableMenuSelector } from "./searchable-menu-selector";
 
 interface ManualOrderFormProps {
   menuItems: MenuItem[];
@@ -184,39 +184,10 @@ export const ManualOrderForm = ({
               </div>
             </div>
 
-            {/* Menu Items Selection */}
-            <div>
-              <Label>Select Menu Items</Label>
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 mt-2 max-h-60 overflow-y-auto">
-                {menuItems.map((item) => (
-                  <Card
-                    key={item.id}
-                    className="cursor-pointer hover:shadow-md transition-shadow"
-                  >
-                    <CardContent className="p-3">
-                      <div className="flex justify-between items-start mb-2">
-                        <h4 className="font-medium text-sm">{item.name}</h4>
-                        <span className="text-sm font-semibold text-green-600">
-                          {formatPrice(item.price)}
-                        </span>
-                      </div>
-                      <Badge variant="secondary" className="text-xs mb-2">
-                        {item.category}
-                      </Badge>
-                      <Button
-                        type="button"
-                        size="sm"
-                        onClick={() => addItemToOrder(item)}
-                        className="w-full"
-                      >
-                        <Plus className="w-3 h-3 mr-1" />
-                        Add
-                      </Button>
-                    </CardContent>
-                  </Card>
-                ))}
-              </div>
-            </div>
+            <SearchableMenuSelector
+              menuItems={menuItems}
+              onAddItem={addItemToOrder}
+            />
 
             {/* Order Items */}
             {orderItems.length > 0 && (
