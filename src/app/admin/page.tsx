@@ -102,10 +102,14 @@ export default function AdminPage() {
   if (authLoading || subscriptionLoading) return <LoadingSpinner />;
   if (!user) return <AdminLogin />;
 
-  const hasOrderingFeature = hasFeatureAccess(subscription?.features || [], [
-    "manual_ordering",
-    "whatsapp_ordering",
-  ]);
+  // const hasOrderingFeature = hasFeatureAccess(subscription?.features || [], [
+  //   "manual_ordering",
+  //   "whatsapp_ordering",
+  // ]);
+
+  const hasOrderingFeature = ["whatsapp_ordering", "manual_ordering"].some(
+    (f) => (subscription?.features ?? []).includes(f)
+  );
 
   const filteredItems =
     selectedCategory === "All"

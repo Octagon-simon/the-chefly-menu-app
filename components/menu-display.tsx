@@ -21,7 +21,11 @@ import {
 } from "lucide-react";
 import type { MenuItem } from "@/types/menu";
 import Image from "next/image";
-import type { ItemDetailModalProps, MenuDisplayProps } from "./types";
+import type {
+  CartModalProps,
+  ItemDetailModalProps,
+  MenuDisplayProps,
+} from "./types";
 import { debounce } from "lodash";
 import { hasFeatureAccess } from "@/lib/features";
 import { QRCodeComponent } from "./qr-code";
@@ -40,6 +44,7 @@ export const MenuDisplay = ({
   const [showQR, setShowQR] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [showScrollTop, setShowScrollTop] = useState(false);
+  const [showCart, setShowCart] = useState(false);
   const [showSearchDropdown, setShowSearchDropdown] = useState(false);
   const [debouncedSearchQuery, setDebouncedSearchQuery] = useState("");
   const searchContainerRef = useRef<HTMLDivElement>(null);
@@ -156,7 +161,11 @@ export const MenuDisplay = ({
       ? "#059669"
       : brand?.secondaryColor || "#059669";
 
-  const addToCart = (menuItem: MenuItem, selectedCombos: any[] = []) => {
+  const addToCart = (
+    menuItem: MenuItem,
+    selectedCombos: any[] = [],
+    itemQuantity = 1
+  ) => {
     const comboPrice = selectedCombos.reduce(
       (sum, combo) => sum + (combo.price || 0),
       0
@@ -175,8 +184,8 @@ export const MenuDisplay = ({
           item.id === existingItem.id
             ? {
                 ...item,
-                quantity: item.quantity + 1,
-                totalPrice: (item.quantity + 1) * totalItemPrice,
+                quantity: item.quantity + itemQuantity,
+                totalPrice: (item.quantity + itemQuantity) * totalItemPrice,
               }
             : item
         )
@@ -187,13 +196,13 @@ export const MenuDisplay = ({
         menuItemId: menuItem.id,
         name: menuItem.name,
         price: totalItemPrice,
-        quantity: 1,
+        quantity: itemQuantity,
         selectedCombos: selectedCombos.map((combo) => ({
           id: combo.id,
           name: combo.name,
           price: combo.price || 0,
         })),
-        totalPrice: totalItemPrice,
+        totalPrice: totalItemPrice * itemQuantity,
       };
       setCart((prev) => [...prev, newOrderItem]);
     }
@@ -620,24 +629,8 @@ export const MenuDisplay = ({
           brand={brand}
           onAddToCart={addToCart}
           cart={cart}
+          setShowCart={setShowCart}
         />
-      )}
-
-      {cartItemCount > 0 && (
-        <div className="fixed bottom-6 left-6 z-40">
-          <Button
-            onClick={() => {
-              /* Will implement cart modal */
-            }}
-            className="w-14 h-14 rounded-full shadow-2xl text-white relative hover:scale-110 transition-all duration-300"
-            style={{ backgroundColor: primaryColor }}
-          >
-            <ShoppingCart className="w-6 h-6" />
-            <Badge className="absolute -top-2 -right-2 bg-red-500 text-white border-0 min-w-[1.5rem] h-6 flex items-center justify-center text-xs">
-              {cartItemCount}
-            </Badge>
-          </Button>
-        </div>
       )}
 
       {cartItemCount > 0 && (
@@ -648,10 +641,10 @@ export const MenuDisplay = ({
           onClearCart={clearCart}
           primaryColor={primaryColor}
           secondaryColor={secondaryColor}
+          userFeatures={user.subscription.features || []}
           brand={brand}
-          onClose={() => {
-            /* Will be handled by cart modal state */
-          }}
+          showCart={showCart}
+          setShowCart={setShowCart}
         />
       )}
 
@@ -677,9 +670,15 @@ const ItemDetailModal = ({
   userFeatures,
   brand,
   onAddToCart,
+  setShowCart,
   cart,
 }: ItemDetailModalProps & {
-  onAddToCart: (item: MenuItem, selectedCombos: any[]) => void;
+  onAddToCart: (
+    item: MenuItem,
+    selectedCombos: any[],
+    itemQuantity: number
+  ) => void;
+  setShowCart: (x: boolean) => void;
   cart: OrderItem[];
 }) => {
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
@@ -689,52 +688,9 @@ const ItemDetailModal = ({
   const displayImages =
     userPlan === "free" && item.images ? [item.images[0]] : item.images || [];
 
-  const hasWhatsAppFeature = hasFeatureAccess(userFeatures, [
-    "whatsapp_ordering",
-  ]);
-
-  const hasOrderingFeature = hasFeatureAccess(userFeatures, [
-    "whatsapp_ordering",
-    "manual_ordering",
-  ]);
-
-  const whatsappNumber = brand?.whatsappNumber;
-
-  const generateWhatsAppLink = () => {
-    if (!whatsappNumber) return "#";
-
-    const restaurantName = brand?.name || "Restaurant";
-    const itemName = item.name;
-
-    const comboPrice = selectedCombos.reduce(
-      (sum, combo) => sum + (combo.price || 0),
-      0
-    );
-    const itemTotalPrice = (item.price + comboPrice) * quantity;
-
-    const comboText =
-      selectedCombos.length > 0
-        ? `\n\nSelected Combos:\n${selectedCombos
-            .map(
-              (combo) =>
-                `    • ${combo.name} ${
-                  combo.price ? `(+${formatPrice(combo.price)})` : "(Free)"
-                }`
-            )
-            .join("\n")}`
-        : "";
-
-    const message = `Hello ${restaurantName}!\n\nI would like to order:\n    • Item: ${itemName}\n    • Quantity: ${quantity}\n    • Price per item: ${formatPrice(
-      item.price + comboPrice
-    )}${comboText}\n\nDelivery Details:\n    • Seat Number: [Please fill if valid]\n    • Address: [Please fill if valid]\n\nTotal Amount: ${formatPrice(
-      itemTotalPrice
-    )}\n\nThank you!`;
-
-    const encodedMessage = encodeURIComponent(message);
-    const cleanNumber = whatsappNumber.replace(/[^\d]/g, "");
-
-    return `https://wa.me/${cleanNumber}?text=${encodedMessage}`;
-  };
+  const hasOrderingFeature = ["whatsapp_ordering", "manual_ordering"].some(
+    (f) => userFeatures.includes(f)
+  );
 
   const nextImage = () => {
     if (displayImages && displayImages.length > 1) {
@@ -762,9 +718,7 @@ const ItemDetailModal = ({
   };
 
   const handleAddToCart = () => {
-    for (let i = 0; i < quantity; i++) {
-      onAddToCart(item, selectedCombos);
-    }
+    onAddToCart(item, selectedCombos, quantity);
     onClose();
   };
 
@@ -921,6 +875,7 @@ const ItemDetailModal = ({
               >
                 {item.category}
               </Badge>
+
               <div className="flex flex-col sm:flex-row gap-2">
                 {hasOrderingFeature && (
                   <>
@@ -943,32 +898,18 @@ const ItemDetailModal = ({
                       )
                     </Button>
 
-                    {/* WhatsApp Order Button */}
-                    {hasWhatsAppFeature && whatsappNumber && (
+                    {/* Manual Order Button */}
+                    {cart.length > 0 && (
                       <Button
-                        onClick={() =>
-                          window.open(generateWhatsAppLink(), "_blank")
-                        }
-                        className="bg-green-500 hover:bg-green-600 text-white px-4 py-2 flex items-center gap-2"
+                        onClick={() => {
+                          setShowCart(true);
+                        }}
+                        variant="outline"
+                        className="px-4 py-2 flex items-center gap-2"
                       >
-                        <MessageCircle className="w-4 h-4" />
-                        Order via WhatsApp
+                        View Cart
                       </Button>
                     )}
-
-                    {/* Manual Order Button */}
-                    <Button
-                      onClick={() => {
-                        // Add to cart and show manual order form
-                        handleAddToCart();
-                        // This will trigger the cart modal to show manual order option
-                      }}
-                      variant="outline"
-                      className="px-4 py-2 flex items-center gap-2"
-                    >
-                      <Phone className="w-4 h-4" />
-                      Manual Order
-                    </Button>
                   </>
                 )}
                 <Button
@@ -995,18 +936,10 @@ const CartModal = ({
   primaryColor,
   secondaryColor,
   brand,
-  onClose,
-}: {
-  cart: OrderItem[];
-  onUpdateQuantity: (itemId: string, quantity: number) => void;
-  onRemoveItem: (itemId: string) => void;
-  onClearCart: () => void;
-  primaryColor: string;
-  secondaryColor: string;
-  brand: any;
-  onClose: () => void;
-}) => {
-  const [showCart, setShowCart] = useState(false);
+  userFeatures,
+  showCart,
+  setShowCart,
+}: CartModalProps) => {
   const [showManualOrderForm, setShowManualOrderForm] = useState(false);
   const [customerInfo, setCustomerInfo] = useState({
     name: "",
@@ -1018,8 +951,14 @@ const CartModal = ({
   const cartTotal = cart.reduce((sum, item) => sum + item.totalPrice, 0);
   const cartItemCount = cart.reduce((sum, item) => sum + item.quantity, 0);
 
+  const hasWhatsAppFeature = hasFeatureAccess(userFeatures, [
+    "whatsapp_ordering",
+  ]);
+
+  const hasManualOrdering = hasFeatureAccess(userFeatures, ["manual_ordering"]);
+
   const generateWhatsAppOrderLink = () => {
-    if (!brand?.whatsappNumber) return "#";
+    if (!brand?.whatsappNumber || !hasWhatsAppFeature) return "#";
 
     const restaurantName = brand?.name || "Restaurant";
     const itemsList = cart
@@ -1069,11 +1008,13 @@ const CartModal = ({
     setShowCart(false);
   };
 
+  if (!hasWhatsAppFeature || !hasWhatsAppFeature) return null;
+
   if (!showCart) {
     return (
       <Button
         onClick={() => setShowCart(true)}
-        className="fixed bottom-6 left-6 w-14 h-14 rounded-full shadow-2xl text-white relative hover:scale-110 transition-all duration-300 z-40"
+        className="fixed bottom-40 right-6 w-14 h-14 rounded-full shadow-2xl text-white hover:scale-110 transition-all duration-300 z-40"
         style={{ backgroundColor: primaryColor }}
       >
         <ShoppingCart className="w-6 h-6" />
@@ -1321,7 +1262,7 @@ const CartModal = ({
               </div>
 
               <div className="space-y-3">
-                {brand?.whatsappNumber && (
+                {brand?.whatsappNumber && hasWhatsAppFeature && (
                   <Button
                     onClick={() =>
                       window.open(generateWhatsAppOrderLink(), "_blank")
@@ -1332,16 +1273,16 @@ const CartModal = ({
                     Order via WhatsApp
                   </Button>
                 )}
-
-                <Button
-                  onClick={() => setShowManualOrderForm(true)}
-                  className="w-full text-white flex items-center justify-center gap-2"
-                  style={{ backgroundColor: primaryColor }}
-                >
-                  <Phone className="w-4 h-4" />
-                  Place Manual Order
-                </Button>
-
+                {hasManualOrdering && (
+                  <Button
+                    onClick={() => setShowManualOrderForm(true)}
+                    className="w-full text-white flex items-center justify-center gap-2"
+                    style={{ backgroundColor: primaryColor }}
+                  >
+                    <Phone className="w-4 h-4" />
+                    Place Manual Order
+                  </Button>
+                )}
                 <div className="flex gap-2">
                   <Button
                     variant="outline"

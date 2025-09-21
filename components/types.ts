@@ -1,12 +1,13 @@
 import type React from "react";
 import type { Feature } from "@/lib/features";
 import type { Brand, Category, MenuItem } from "@/types/menu";
+import { OrderItem } from "@/types/order";
 
 export interface MenuDisplayProps {
   user: {
     id: string;
     username: string;
-    subscription: { plan: string; features: Feature[] };
+    subscription: { plan: string; features: Feature["id"][] };
   };
   menuItems: MenuItem[];
   categories: Category[];
@@ -30,10 +31,23 @@ export interface ItemDetailModalProps {
   primaryColor: string;
   secondaryColor: string;
   userPlan: string;
-  userFeatures: Feature[];
+  userFeatures: Feature["id"][];
   brand?: any;
   onAddToCart?: (item: MenuItem, selectedCombos: any[]) => void;
   cart?: any[];
+}
+
+export interface CartModalProps {
+  cart: OrderItem[];
+  onUpdateQuantity: (itemId: string, quantity: number) => void;
+  onRemoveItem: (itemId: string) => void;
+  onClearCart: () => void;
+  primaryColor: string;
+  secondaryColor: string;
+  userFeatures: Feature["id"][];
+  brand: any;
+  showCart: boolean;
+  setShowCart: (x: boolean) => void;
 }
 
 export interface MenuItemFormProps {
