@@ -13,6 +13,7 @@ import { getDatabase, ref, get, set, update } from "firebase/database";
 import { auth } from "@/lib/firebase";
 import { generateRandomUsername, generateSlug } from "@/lib/utils";
 import type { User, UserSubscription } from "@/types/menu";
+import { features } from "process";
 
 const baseUrl = process.env.NEXT_PUBLIC_APP_URL || "https://cheflymenu.app";
 
@@ -45,6 +46,7 @@ export const useAuth = () => {
         startDate: now,
         createdAt: now,
         updatedAt: now,
+        features: [],
       };
 
       const userData: User = {
@@ -62,7 +64,7 @@ export const useAuth = () => {
       //write public user document (only expose username and maybe other public fields later)
       await set(publicUserRef, {
         username,
-        subscription: { plan: subscription.plan }, // expose only plan in public
+        subscription: { plan: subscription.plan, features: [] },
         createdAt: now,
       });
       try {

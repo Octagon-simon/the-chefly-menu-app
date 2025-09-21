@@ -1,3 +1,5 @@
+import { Feature } from "@/lib/features";
+
 export interface MenuItem {
   id: string;
   name: string;
@@ -37,6 +39,7 @@ export interface Brand {
   logo?: string;
   primaryColor: string;
   secondaryColor: string;
+  whatsappNumber?: string; // Optional WhatsApp sales number
   createdAt: string;
   updatedAt: string;
 }
@@ -46,6 +49,7 @@ export interface UserSubscription {
   userId: string;
   plan: "free" | "pro";
   status: "active" | "inactive" | "cancelled";
+  features: Feature["id"][]; // Array of feature IDs user has access to
   startDate: string;
   endDate?: string | null;
   createdAt: string;

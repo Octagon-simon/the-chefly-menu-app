@@ -2,6 +2,8 @@ import { type NextRequest, NextResponse } from "next/server";
 import { auth } from "firebase-admin";
 import { initializeApp, getApps, cert } from "firebase-admin/app";
 import { paystack } from "../../lib/paystack";
+import { ADDON_FEATURES, Feature } from "@/lib/features";
+import { calculateTotalSubscriptionCost } from "../../lib/subscription";
 
 // Initialize Firebase Admin
 if (!getApps().length) {
@@ -17,8 +19,23 @@ if (!getApps().length) {
 
 export async function POST(request: NextRequest) {
   try {
-    const { plan, idToken, promoCode, discount, isRenewal, remainingDays } =
-      await request.json();
+    const {
+      plan,
+      idToken,
+      promoCode,
+      discount,
+      isRenewal,
+      remainingDays,
+      selectedFeatures,
+    } = (await request.json()) as {
+      plan: "yearly" | "monthly";
+      idToken: string;
+      promoCode: string;
+      discount: number;
+      isRenewal: boolean;
+      remainingDays: number;
+      selectedFeatures: string[];
+    };
 
     if (!plan || !idToken) {
       return NextResponse.json(
@@ -26,6 +43,20 @@ export async function POST(request: NextRequest) {
         { status: 400 }
       );
     }
+
+    if (!selectedFeatures || Object.keys(selectedFeatures).length <= 0) {
+      return NextResponse.json(
+        { error: "Subscription features are required" },
+        { status: 400 }
+      );
+    }
+
+    //make a map/dictionary of add-ons first (O(m)), then look them up in O(1):
+    const addonMap = new Map(ADDON_FEATURES.map((addon) => [addon.id, addon]));
+
+    const selectedAddOns = selectedFeatures
+      .map((id) => addonMap.get(id))
+      .filter((addon): addon is Feature => Boolean(addon));
 
     // Verify the Firebase ID token
     const decodedToken = await auth().verifyIdToken(idToken);
@@ -43,10 +74,18 @@ export async function POST(request: NextRequest) {
     const baseAmount = plan === "yearly" ? 5000000 : 500000; // Amount in kobo (₦50,000 or ₦5,000)
 
     // Apply discount if promo code is provided
-    let finalAmount = baseAmount;
-    if (promoCode && discount > 0) {
-      finalAmount = baseAmount - (baseAmount * discount) / 100;
-    }
+    // let finalAmount = baseAmount;
+    // if (promoCode && discount > 0) {
+    //   finalAmount = baseAmount - (baseAmount * discount) / 100;
+    // }
+
+    const finalAmount = calculateTotalSubscriptionCost(
+      plan,
+      selectedAddOns,
+      discount
+    );
+
+    console.log(finalAmount, selectedAddOns, selectedFeatures, plan);
 
     const reference = paystack.generateReference(userId);
     const callbackUrl = `${process.env.NEXT_PUBLIC_APP_URL}/payment/callback`;
@@ -67,6 +106,7 @@ export async function POST(request: NextRequest) {
         finalAmount: Math.round(finalAmount),
         isRenewal: isRenewal || false,
         remainingDays: remainingDays || 0,
+        selectedFeatures
       },
     });
 

@@ -23,7 +23,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const { userId, plan, isRenewal, remainingDays } =
+    const { userId, plan, isRenewal, remainingDays, selectedFeatures } =
       verification.data.metadata;
 
     // Upgrade user subscription
@@ -32,7 +32,8 @@ export async function POST(request: NextRequest) {
       plan as "monthly" | "yearly",
       reference,
       isRenewal || false,
-      remainingDays || 0
+      remainingDays || 0,
+      selectedFeatures
     );
 
     if (!upgradeSuccess) {

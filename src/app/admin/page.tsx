@@ -4,9 +4,11 @@ import { useState } from "react";
 import { useAuth } from "@/hooks/use-auth";
 import { useMenu } from "@/hooks/use-menu";
 import { useBrand } from "@/hooks/use-brand";
+import { useOrders } from "@/hooks/use-orders";
 import { AdminLogin } from "@/components/admin-login";
 import { MenuItemForm } from "@/components/menu-item-form";
 import { BrandSettings } from "@/components/brand-settings";
+import { ManualOrderForm } from "@/components/manual-order-form";
 import { LoadingSpinner } from "@/components/loading-spinner";
 import { SubscriptionBadge } from "@/components/subscription-badge";
 import { UpgradeBanner } from "@/components/upgrade-banner";
@@ -14,6 +16,7 @@ import { QRCodeGenerator } from "@/components/qr-code-generator";
 import { CategoryForm } from "@/components/category-form";
 import { SubscriptionExpiryBanner } from "@/components/subscription-expiry-banner";
 import type { MenuItem, Category } from "@/types/menu";
+import type { Order } from "@/types/order";
 import {
   Plus,
   Edit,
@@ -25,18 +28,40 @@ import {
   Eye,
   Menu,
   X,
+  ShoppingCart,
+  Clock,
+  CheckCircle,
+  AlertCircle,
+  Package,
+  Truck,
+  Download,
+  FileText,
+  Calendar,
 } from "lucide-react";
 import Image from "next/image";
 import { toast } from "react-toastify";
 import { useRouter } from "next/navigation";
 import { useSubscription } from "@/hooks/use-subscription";
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import Link from "next/link";
-import { formatText } from "@/lib/utils";
+import {
+  exportOrdersToCSV,
+  exportOrdersSummaryToCSV,
+  filterOrdersByDateRange,
+} from "@/lib/utils";
+import { hasFeatureAccess } from "@/lib/features";
 
 export default function AdminPage() {
   const { user, loading: authLoading, logout } = useAuth();
-  const { isPro, isExpired, loading: subscriptionLoading } = useSubscription();
+  const {
+    isPro,
+    isExpired,
+    subscription,
+    loading: subscriptionLoading,
+  } = useSubscription();
   const {
     menuItems,
     categories,
@@ -48,6 +73,14 @@ export default function AdminPage() {
     updateCategory,
     deleteCategory,
   } = useMenu();
+  const {
+    orders,
+    loading: ordersLoading,
+    summary,
+    updateOrderStatus,
+    deleteOrder,
+    createOrder,
+  } = useOrders();
   const { brand } = useBrand();
   const router = useRouter();
 
@@ -55,19 +88,88 @@ export default function AdminPage() {
   const [editingItem, setEditingItem] = useState<MenuItem | null>(null);
   const [selectedCategory, setSelectedCategory] = useState<string>("All");
   const [activeTab, setActiveTab] = useState<
-    "menu" | "brand" | "categories" | "qr"
+    "menu" | "brand" | "categories" | "qr" | "orders"
   >("menu");
   const [showCategoryForm, setShowCategoryForm] = useState(false);
   const [editingCategory, setEditingCategory] = useState<Category | null>(null);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [showOrderForm, setShowOrderForm] = useState(false);
+  const [selectedOrderStatus, setSelectedOrderStatus] = useState<string>("All");
+  const [exportStartDate, setExportStartDate] = useState<string>("");
+  const [exportEndDate, setExportEndDate] = useState<string>("");
+  const [showExportOptions, setShowExportOptions] = useState(false);
 
   if (authLoading || subscriptionLoading) return <LoadingSpinner />;
   if (!user) return <AdminLogin />;
+
+  const hasOrderingFeature = hasFeatureAccess(subscription?.features || [], [
+    "manual_ordering",
+    "whatsapp_ordering",
+  ]);
 
   const filteredItems =
     selectedCategory === "All"
       ? menuItems
       : menuItems.filter((item) => item.category === selectedCategory);
+
+  const filteredOrders =
+    selectedOrderStatus === "All"
+      ? orders
+      : orders.filter((order) => order.status === selectedOrderStatus);
+
+  const handleExportOrders = (type: "all" | "filtered" | "summary") => {
+    let ordersToExport = orders;
+
+    // Apply date range filter if specified
+    if (exportStartDate || exportEndDate) {
+      ordersToExport = filterOrdersByDateRange(
+        orders,
+        exportStartDate,
+        exportEndDate
+      );
+    }
+
+    // Apply status filter if not "All"
+    if (type === "filtered" && selectedOrderStatus !== "All") {
+      ordersToExport = ordersToExport.filter(
+        (order) => order.status === selectedOrderStatus
+      );
+    }
+
+    if (ordersToExport.length === 0) {
+      toast.error("No orders found for the selected criteria");
+      return;
+    }
+
+    const dateRangeText =
+      exportStartDate || exportEndDate
+        ? `_${exportStartDate || "start"}-to-${exportEndDate || "end"}`
+        : "";
+
+    if (type === "summary") {
+      exportOrdersSummaryToCSV(
+        ordersToExport,
+        `orders-summary${dateRangeText}_${
+          new Date().toISOString().split("T")[0]
+        }.csv`
+      );
+      toast.success("Orders summary exported successfully!");
+    } else {
+      const filename =
+        type === "filtered" && selectedOrderStatus !== "All"
+          ? `orders-${selectedOrderStatus}${dateRangeText}_${
+              new Date().toISOString().split("T")[0]
+            }.csv`
+          : `orders-all${dateRangeText}_${
+              new Date().toISOString().split("T")[0]
+            }.csv`;
+
+      exportOrdersToCSV(ordersToExport, filename);
+      toast.success("Orders exported successfully!");
+    }
+
+    setShowExportOptions(false);
+  };
 
   const handleAddItem = async (item: Omit<MenuItem, "id">) => {
     const result = await addMenuItem(item);
@@ -124,7 +226,7 @@ export default function AdminPage() {
       toast.success("Category updated successfully!");
       setEditingCategory(null);
     } else {
-      toast.error(result.error || "Failed to update category");
+      toast.error("Failed to update category");
     }
     return result;
   };
@@ -137,6 +239,85 @@ export default function AdminPage() {
       } else {
         toast.error(result.error || "Failed to delete category");
       }
+    }
+  };
+
+  const handleCreateOrder = async (
+    customer: any,
+    items: any[],
+    notes?: string
+  ) => {
+    const result = await createOrder(customer, items, notes);
+    if (result.success) {
+      toast.success("Order created successfully!");
+      setShowOrderForm(false);
+    } else {
+      toast.error(result.error || "Failed to create order");
+    }
+  };
+
+  const handleUpdateOrderStatus = async (
+    orderId: string,
+    status: Order["status"]
+  ) => {
+    const result = await updateOrderStatus(orderId, status);
+    if (result.success) {
+      toast.success("Order status updated successfully!");
+    } else {
+      toast.error(result.error || "Failed to update order status");
+    }
+  };
+
+  const handleDeleteOrder = async (orderId: string, customerName: string) => {
+    if (
+      confirm(
+        `Are you sure you want to delete the order for "${customerName}"?`
+      )
+    ) {
+      const result = await deleteOrder(orderId);
+      if (result.success) {
+        toast.success("Order deleted successfully!");
+      } else {
+        toast.error(result.error || "Failed to delete order");
+      }
+    }
+  };
+
+  const getStatusColor = (status: Order["status"]) => {
+    switch (status) {
+      case "pending":
+        return "bg-yellow-100 text-yellow-800";
+      case "confirmed":
+        return "bg-blue-100 text-blue-800";
+      case "preparing":
+        return "bg-orange-100 text-orange-800";
+      case "ready":
+        return "bg-purple-100 text-purple-800";
+      case "completed":
+        return "bg-green-100 text-green-800";
+      case "cancelled":
+        return "bg-red-100 text-red-800";
+      default:
+        return "bg-gray-100 text-gray-800";
+    }
+  };
+
+  const getStatusIcon = (status: Order["status"]) => {
+    switch (status) {
+      case "pending":
+        return <Clock size={14} />;
+      case "confirmed":
+        return <CheckCircle size={14} />;
+      case "preparing":
+        return <Package size={14} />;
+      case "ready":
+        return <AlertCircle size={14} />;
+      case "completed":
+        return <CheckCircle size={14} />;
+      case "cancelled":
+        return <X size={14} />;
+      default:
+        return <Clock size={14} />;
     }
   };
 
@@ -197,7 +378,7 @@ export default function AdminPage() {
                 View Menu
               </a>
               <span className="text-sm text-gray-600 max-w-[150px] truncate">
-                Welcome, {formatText(user?.username)}
+                Welcome, {user.email}
               </span>
               <button
                 onClick={handleLogout}
@@ -335,6 +516,24 @@ export default function AdminPage() {
               >
                 Menu Items
               </button>
+              {hasOrderingFeature && (
+                <button
+                  onClick={() => setActiveTab("orders")}
+                  className={`py-2 px-1 border-b-2 font-medium text-sm flex items-center gap-1 whitespace-nowrap ${
+                    activeTab === "orders"
+                      ? "border-[#E44D26] text-[#E44D26]"
+                      : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
+                  }`}
+                >
+                  <ShoppingCart size={16} />
+                  Orders
+                  {summary.pendingOrders > 0 && (
+                    <Badge className="bg-red-500 text-white text-xs px-1 py-0 min-w-[16px] h-4 flex items-center justify-center">
+                      {summary.pendingOrders}
+                    </Badge>
+                  )}
+                </button>
+              )}
               <button
                 onClick={() => setActiveTab("categories")}
                 className={`py-2 px-1 border-b-2 font-medium text-sm whitespace-nowrap ${
@@ -540,6 +739,360 @@ export default function AdminPage() {
           </>
         )}
 
+        {activeTab === "orders" && hasOrderingFeature && (
+          <div className="space-y-6">
+            {/* Order Summary Cards */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+              <div className="bg-white p-4 rounded-lg shadow-md">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm text-gray-600">Total Orders</p>
+                    <p className="text-2xl font-bold text-gray-900">
+                      {summary.totalOrders}
+                    </p>
+                  </div>
+                  <ShoppingCart className="w-8 h-8 text-blue-500" />
+                </div>
+              </div>
+              <div className="bg-white p-4 rounded-lg shadow-md">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm text-gray-600">Pending Orders</p>
+                    <p className="text-2xl font-bold text-orange-600">
+                      {summary.pendingOrders}
+                    </p>
+                  </div>
+                  <Clock className="w-8 h-8 text-orange-500" />
+                </div>
+              </div>
+              <div className="bg-white p-4 rounded-lg shadow-md">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm text-gray-600">Completed Orders</p>
+                    <p className="text-2xl font-bold text-green-600">
+                      {summary.completedOrders}
+                    </p>
+                  </div>
+                  <CheckCircle className="w-8 h-8 text-green-500" />
+                </div>
+              </div>
+              <div className="bg-white p-4 rounded-lg shadow-md">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm text-gray-600">Total Revenue</p>
+                    <p className="text-2xl font-bold text-green-600">
+                      ₦{summary.totalRevenue.toLocaleString()}
+                    </p>
+                  </div>
+                  <Truck className="w-8 h-8 text-green-500" />
+                </div>
+              </div>
+            </div>
+
+            {/* Order Controls */}
+            <div className="flex flex-col gap-4">
+              <div className="flex flex-wrap gap-2">
+                <button
+                  onClick={() => setSelectedOrderStatus("All")}
+                  className={`px-3 sm:px-4 py-2 rounded-full transition-colors text-sm ${
+                    selectedOrderStatus === "All"
+                      ? "bg-black text-white"
+                      : "bg-white text-gray-700 hover:bg-gray-100"
+                  }`}
+                >
+                  All ({orders.length})
+                </button>
+                {[
+                  "pending",
+                  "confirmed",
+                  "preparing",
+                  "ready",
+                  "completed",
+                  "cancelled",
+                ].map((status) => (
+                  <button
+                    key={status}
+                    onClick={() => setSelectedOrderStatus(status)}
+                    className={`px-3 sm:px-4 py-2 rounded-full transition-colors text-sm capitalize ${
+                      selectedOrderStatus === status
+                        ? "bg-blue-600 text-white"
+                        : "bg-white text-gray-700 hover:bg-gray-100"
+                    }`}
+                  >
+                    {status} (
+                    {orders.filter((order) => order.status === status).length})
+                  </button>
+                ))}
+              </div>
+
+              <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4">
+                <div className="flex flex-wrap gap-2">
+                  <Button
+                    onClick={() => setShowOrderForm(true)}
+                    className="flex items-center gap-2 px-4 py-2 text-sm"
+                  >
+                    <Plus size={18} />
+                    Create Manual Order
+                  </Button>
+                  <Button
+                    onClick={() => setShowExportOptions(!showExportOptions)}
+                    variant="outline"
+                    className="flex items-center gap-2 px-4 py-2 text-sm"
+                  >
+                    <Download size={18} />
+                    Export Orders
+                  </Button>
+                </div>
+              </div>
+
+              {showExportOptions && (
+                <div className="bg-white p-4 rounded-lg shadow-md border">
+                  <h3 className="font-semibold text-gray-900 mb-4 flex items-center gap-2">
+                    <FileText size={18} />
+                    Export Options
+                  </h3>
+
+                  {/* Date Range Filter */}
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
+                    <div>
+                      <Label
+                        htmlFor="startDate"
+                        className="flex items-center gap-2"
+                      >
+                        <Calendar size={14} />
+                        Start Date (Optional)
+                      </Label>
+                      <Input
+                        id="startDate"
+                        type="date"
+                        value={exportStartDate}
+                        onChange={(e) => setExportStartDate(e.target.value)}
+                        className="mt-1"
+                      />
+                    </div>
+                    <div>
+                      <Label
+                        htmlFor="endDate"
+                        className="flex items-center gap-2"
+                      >
+                        <Calendar size={14} />
+                        End Date (Optional)
+                      </Label>
+                      <Input
+                        id="endDate"
+                        type="date"
+                        value={exportEndDate}
+                        onChange={(e) => setExportEndDate(e.target.value)}
+                        className="mt-1"
+                      />
+                    </div>
+                  </div>
+
+                  {/* Export Buttons */}
+                  <div className="flex flex-wrap gap-2">
+                    <Button
+                      onClick={() => handleExportOrders("all")}
+                      className="flex items-center gap-2 text-sm"
+                    >
+                      <Download size={14} />
+                      Export All Orders
+                    </Button>
+                    {selectedOrderStatus !== "All" && (
+                      <Button
+                        onClick={() => handleExportOrders("filtered")}
+                        variant="outline"
+                        className="flex items-center gap-2 text-sm"
+                      >
+                        <Download size={14} />
+                        Export {selectedOrderStatus} Orders
+                      </Button>
+                    )}
+                    <Button
+                      onClick={() => handleExportOrders("summary")}
+                      variant="outline"
+                      className="flex items-center gap-2 text-sm"
+                    >
+                      <FileText size={14} />
+                      Export Summary
+                    </Button>
+                    <Button
+                      onClick={() => setShowExportOptions(false)}
+                      variant="ghost"
+                      className="text-sm"
+                    >
+                      Cancel
+                    </Button>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Orders List */}
+            {ordersLoading ? (
+              <LoadingSpinner />
+            ) : filteredOrders.length === 0 ? (
+              <div className="text-center py-12">
+                <h3 className="text-lg sm:text-xl font-semibold text-gray-600 mb-2">
+                  No orders found
+                </h3>
+                <p className="text-sm sm:text-base text-gray-500">
+                  {selectedOrderStatus === "All"
+                    ? "No orders yet"
+                    : `No ${selectedOrderStatus} orders`}
+                </p>
+              </div>
+            ) : (
+              <div className="space-y-4">
+                {filteredOrders.map((order) => (
+                  <div
+                    key={order.id}
+                    className="bg-white rounded-lg shadow-md p-4 sm:p-6"
+                  >
+                    <div className="flex flex-col sm:flex-row sm:justify-between sm:items-start gap-4">
+                      <div className="flex-1">
+                        <div className="flex items-center gap-3 mb-2">
+                          <h3 className="font-semibold text-lg text-gray-900">
+                            {order.customer.name}
+                          </h3>
+                          <Badge
+                            className={`${getStatusColor(
+                              order.status
+                            )} flex items-center gap-1`}
+                          >
+                            {getStatusIcon(order.status)}
+                            {order.status}
+                          </Badge>
+                        </div>
+                        <div className="text-sm text-gray-600 space-y-1">
+                          <p>
+                            <strong>Phone:</strong> {order.customer.phone}
+                          </p>
+                          <p>
+                            <strong>Address:</strong> {order.customer.address}
+                          </p>
+                          <p>
+                            <strong>Order Date:</strong>{" "}
+                            {new Date(order.createdAt).toLocaleDateString()}
+                          </p>
+                          {order.notes && (
+                            <p>
+                              <strong>Notes:</strong> {order.notes}
+                            </p>
+                          )}
+                        </div>
+                      </div>
+                      <div className="text-right">
+                        <p className="text-2xl font-bold text-green-600">
+                          ₦{order.totalAmount.toLocaleString()}
+                        </p>
+                        <p className="text-sm text-gray-500">
+                          {order.items.length} items
+                        </p>
+                      </div>
+                    </div>
+
+                    {/* Order Items */}
+                    <div className="mt-4 border-t pt-4">
+                      <h4 className="font-medium text-gray-900 mb-2">
+                        Order Items:
+                      </h4>
+                      <div className="space-y-2">
+                        {order.items.map((item) => (
+                          <div
+                            key={item.id}
+                            className="flex justify-between items-center text-sm"
+                          >
+                            <span>
+                              {item.name} x{item.quantity}
+                            </span>
+                            <span className="font-medium">
+                              ₦{item.totalPrice.toLocaleString()}
+                            </span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+
+                    {/* Order Actions */}
+                    <div className="mt-4 flex flex-wrap gap-2">
+                      {order.status !== "completed" &&
+                        order.status !== "cancelled" && (
+                          <>
+                            {order.status === "pending" && (
+                              <Button
+                                size="sm"
+                                onClick={() =>
+                                  handleUpdateOrderStatus(order.id, "confirmed")
+                                }
+                                className="bg-blue-600 hover:bg-blue-700"
+                              >
+                                Confirm Order
+                              </Button>
+                            )}
+                            {order.status === "confirmed" && (
+                              <Button
+                                size="sm"
+                                onClick={() =>
+                                  handleUpdateOrderStatus(order.id, "preparing")
+                                }
+                                className="bg-orange-600 hover:bg-orange-700"
+                              >
+                                Start Preparing
+                              </Button>
+                            )}
+                            {order.status === "preparing" && (
+                              <Button
+                                size="sm"
+                                onClick={() =>
+                                  handleUpdateOrderStatus(order.id, "ready")
+                                }
+                                className="bg-purple-600 hover:bg-purple-700"
+                              >
+                                Mark Ready
+                              </Button>
+                            )}
+                            {order.status === "ready" && (
+                              <Button
+                                size="sm"
+                                onClick={() =>
+                                  handleUpdateOrderStatus(order.id, "completed")
+                                }
+                                className="bg-green-600 hover:bg-green-700"
+                              >
+                                Complete Order
+                              </Button>
+                            )}
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() =>
+                                handleUpdateOrderStatus(order.id, "cancelled")
+                              }
+                              className="border-red-300 text-red-600 hover:bg-red-50"
+                            >
+                              Cancel Order
+                            </Button>
+                          </>
+                        )}
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() =>
+                          handleDeleteOrder(order.id, order.customer.name)
+                        }
+                        className="border-red-300 text-red-600 hover:bg-red-50"
+                      >
+                        <Trash2 size={14} />
+                        Delete
+                      </Button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+
         {activeTab === "categories" && (
           <div className="space-y-6">
             <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4">
@@ -667,6 +1220,14 @@ export default function AdminPage() {
           category={editingCategory}
           onSubmit={handleUpdateCategory}
           onCancel={() => setEditingCategory(null)}
+        />
+      )}
+
+      {showOrderForm && (
+        <ManualOrderForm
+          menuItems={menuItems}
+          onSubmit={handleCreateOrder}
+          onClose={() => setShowOrderForm(false)}
         />
       )}
     </div>

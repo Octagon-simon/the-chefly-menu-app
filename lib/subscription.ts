@@ -1,44 +1,38 @@
 import type { User, UserSubscription } from "@/types/menu";
 import { db } from "./firebase";
 import { ref, get, update } from "firebase/database";
+import {
+  CORE_PRO_FEATURES,
+  ADDON_FEATURES,
+  calculateTotalPrice,
+  formatPrice,
+} from "./features";
 
 export interface SubscriptionPlan {
   id: string;
   name: string;
-  price: number;
+  basePrice: number;
   duration: "monthly" | "yearly";
-  features: string[];
+  coreFeatures: string[];
+  availableAddons: string[];
 }
 
 export const SUBSCRIPTION_PLANS: SubscriptionPlan[] = [
   {
     id: "pro_monthly",
     name: "Pro Monthly",
-    price: 5000,
+    basePrice: 500000, // ₦5,000 in kobo
     duration: "monthly",
-    features: [
-      "Unlimited menu items",
-      "Multiple images per item",
-      "Custom branding",
-      "QR code generation",
-      "Analytics dashboard",
-      "Priority support",
-    ],
+    coreFeatures: CORE_PRO_FEATURES.map((f) => f.id),
+    availableAddons: ADDON_FEATURES.map((f) => f.id),
   },
   {
     id: "pro_yearly",
     name: "Pro Yearly",
-    price: 50000,
+    basePrice: 5000000, // ₦50,000 in kobo
     duration: "yearly",
-    features: [
-      "Unlimited menu items",
-      "Multiple images per item",
-      "Custom branding",
-      "QR code generation",
-      "Analytics dashboard",
-      "Priority support",
-      "2 months free",
-    ],
+    coreFeatures: CORE_PRO_FEATURES.map((f) => f.id),
+    availableAddons: ADDON_FEATURES.map((f) => f.id),
   },
 ];
 
@@ -84,19 +78,18 @@ export class SubscriptionService {
         ...user.subscription,
         plan: "free",
         status: "cancelled",
+        features: [], // Remove all features
         endDate: null,
         updatedAt: now.toISOString(),
       };
 
-      //update private user document
       await update(userRef, {
         subscription: updatedSubscription,
         updatedAt: now.toISOString(),
       });
 
-      //update public user document
       await update(publicUserRef, {
-        subscription: { plan: "free" },
+        subscription: { plan: "free", features: [] },
       });
     } catch (error) {
       console.error("❌ Error downgrading to free:", error);
@@ -107,10 +100,14 @@ export class SubscriptionService {
     return SUBSCRIPTION_PLANS.find((plan) => plan.id === planId) || null;
   }
 
-  static formatPrice(amount: number): string {
-    return new Intl.NumberFormat("en-NG", {
-      style: "currency",
-      currency: "NGN",
-    }).format(amount / 100);
+  static calculateCustomPlanPrice(
+    duration: "monthly" | "yearly",
+    addonFeatures: string[]
+  ): number {
+    return calculateTotalPrice(duration, addonFeatures);
+  }
+
+  static formatPrice(amountInKobo: number): string {
+    return formatPrice(amountInKobo);
   }
 }

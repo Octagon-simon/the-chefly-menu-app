@@ -13,35 +13,43 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Crown, Zap, ArrowLeft, Smartphone } from "lucide-react";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Crown, Zap, ArrowLeft, Check, Plus } from "lucide-react";
 import { LoadingSpinner } from "@/components/loading-spinner";
 import { getAuth } from "firebase/auth";
 import { toast } from "react-toastify";
+import {
+  CORE_PRO_FEATURES,
+  ADDON_FEATURES,
+  BASE_PRO_PRICE,
+  formatPrice,
+} from "@/lib/features";
 
-const plans = [
+const basePlans = [
   {
     id: "monthly",
-    name: "Premium Monthly",
-    price: 5000,
-    period: "month",
+    name: "Pro Monthly",
+    duration: "monthly" as const,
     description: "Perfect for getting started",
     popular: false,
   },
   {
     id: "yearly",
-    name: "Premium Yearly",
-    price: 50000,
-    period: "year",
+    name: "Pro Yearly",
+    duration: "yearly" as const,
     description: "Best value - 2 months free!",
     popular: true,
-    savings: 10000,
   },
 ];
 
 export default function UpgradePage() {
   const { user, loading } = useAuth();
   const router = useRouter();
-  const [processingPlan, setProcessingPlan] = useState<string | null>(null);
+  const [selectedPlan, setSelectedPlan] = useState<"monthly" | "yearly">(
+    "yearly"
+  );
+  const [selectedAddons, setSelectedAddons] = useState<string[]>([]);
+  const [processingPayment, setProcessingPayment] = useState(false);
   const [promoCode, setPromoCode] = useState("");
   const [promoDiscount, setPromoDiscount] = useState(0);
   const [promoLoading, setPromoLoading] = useState(false);
@@ -55,32 +63,46 @@ export default function UpgradePage() {
     if (user && user.subscription.plan === "pro" && user.subscription.endDate) {
       const endDate = new Date(user.subscription.endDate);
       const now = new Date();
+      const diffTime = endDate.getTime() - now.getTime();
+      const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
 
-      // normalize to midnight (ignore hours/minutes/seconds)
-      const endDateMidnight = new Date(
-        endDate.getFullYear(),
-        endDate.getMonth(),
-        endDate.getDate()
-      );
-      const nowMidnight = new Date(
-        now.getFullYear(),
-        now.getMonth(),
-        now.getDate()
-      );
+      setRemainingDays(Math.max(0, diffDays));
+      setIsRenewal(true);
 
-      const diffTime = endDateMidnight.getTime() - nowMidnight.getTime();
-      const diffDays = Math.max(0, Math.ceil(diffTime / (1000 * 60 * 60 * 24)));
-
-      setRemainingDays(diffDays);
-      setIsRenewal(diffDays > 0);
+      // Pre-select current addon features for renewal
+      if (user.subscription.features) {
+        const currentAddons = user.subscription.features.filter((featureId) =>
+          ADDON_FEATURES.some((addon) => addon.id === featureId)
+        );
+        setSelectedAddons(currentAddons);
+      }
     }
   }, [user]);
 
-  const formatPrice = (amount: number) => {
-    return new Intl.NumberFormat("en-NG", {
-      style: "currency",
-      currency: "NGN",
-    }).format(amount);
+  const calculateTotalCost = () => {
+    const basePrice = BASE_PRO_PRICE[selectedPlan];
+    const addonPrice = selectedAddons.reduce((total, addonId) => {
+      const addon = ADDON_FEATURES.find((f) => f.id === addonId);
+      return total + (addon?.price || 0);
+    }, 0);
+
+    const totalAddonPrice =
+      selectedPlan === "yearly" ? addonPrice * 12 : addonPrice;
+    const totalPrice = basePrice + totalAddonPrice;
+
+    if (promoApplied && promoDiscount > 0) {
+      return totalPrice - (totalPrice * promoDiscount) / 100;
+    }
+
+    return totalPrice;
+  };
+
+  const handleAddonToggle = (addonId: string) => {
+    setSelectedAddons((prev) =>
+      prev.includes(addonId)
+        ? prev.filter((id) => id !== addonId)
+        : [...prev, addonId]
+    );
   };
 
   const validatePromoCode = async (code: string) => {
@@ -114,7 +136,6 @@ export default function UpgradePage() {
         return;
       }
 
-      // Apply discount
       setPromoDiscount(promoData.discount);
       setPromoApplied(true);
       setPromoError("");
@@ -134,23 +155,15 @@ export default function UpgradePage() {
     setPromoError("");
   };
 
-  const calculateDiscountedPrice = (originalPrice: number) => {
-    if (promoDiscount > 0) {
-      return originalPrice - (originalPrice * promoDiscount) / 100;
-    }
-    return originalPrice;
-  };
-
-  const handleUpgrade = async (planId: string) => {
+  const handleUpgrade = async () => {
     if (!user) {
       toast.error("You must be signed in to upgrade your account.");
       return;
     }
 
-    setProcessingPlan(planId);
+    setProcessingPayment(true);
 
     try {
-      // Get Firebase ID token
       const auth = getAuth();
       const currentUser = auth.currentUser;
 
@@ -159,15 +172,20 @@ export default function UpgradePage() {
       }
 
       const idToken = await currentUser.getIdToken();
+      const totalCost = calculateTotalCost();
 
-      // Initialize payment
       const response = await fetch("/api/payment/initialize", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          plan: planId,
+          plan: selectedPlan,
+          selectedFeatures: [
+            ...CORE_PRO_FEATURES.map((f) => f.id),
+            ...selectedAddons,
+          ],
+          totalAmount: totalCost,
           idToken,
           promoCode: promoApplied ? promoCode : null,
           discount: promoDiscount,
@@ -175,14 +193,13 @@ export default function UpgradePage() {
           remainingDays,
         }),
       });
-
+// plan, idToken, promoCode, discount, isRenewal, remainingDays
       const data = await response.json();
 
       if (!response.ok) {
         throw new Error(data.error || "Failed to initialize payment");
       }
 
-      // Redirect to Paystack payment page
       window.location.href = data.data.authorization_url;
     } catch (error) {
       console.error("Upgrade error:", error);
@@ -190,7 +207,7 @@ export default function UpgradePage() {
         error instanceof Error ? error.message : "Failed to process payment"
       );
     } finally {
-      setProcessingPlan(null);
+      setProcessingPayment(false);
     }
   };
 
@@ -208,20 +225,14 @@ export default function UpgradePage() {
     );
   }
 
-  const plansWithDiscount = plans.map((plan) => ({
-    ...plan,
-    originalPrice: plan.price,
-    discountedPrice: calculateDiscountedPrice(plan.price),
-    savings:
-      promoDiscount > 0
-        ? plan.price - calculateDiscountedPrice(plan.price)
-        : plan.savings,
-  }));
+  const totalCost = calculateTotalCost();
+  const basePrice = BASE_PRO_PRICE[selectedPlan];
+  const addonsCost = totalCost - basePrice;
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-orange-50 to-red-50 py-12">
       <div className="container mx-auto px-4">
-        <div className="max-w-4xl mx-auto">
+        <div className="max-w-6xl mx-auto">
           {/* Header */}
           <div className="text-center mb-12">
             <Button
@@ -234,16 +245,16 @@ export default function UpgradePage() {
             </Button>
 
             <h1 className="text-4xl font-bold text-gray-900 mb-4">
-              {isRenewal ? "Renew Your Subscription" : "Upgrade to Premium"}
+              {isRenewal ? "Renew Your Subscription" : "Choose Your Pro Plan"}
             </h1>
             <p className="text-xl text-gray-600 max-w-2xl mx-auto">
               {isRenewal
-                ? "Continue enjoying premium features with seamless renewal"
-                : "Unlock powerful features to create stunning digital menus and grow your restaurant business"}
+                ? "Continue with your current features or add new ones"
+                : "Select the features you need and pay only for what you use"}
             </p>
           </div>
 
-          {/* Current Plan */}
+          {/* Current Plan Status */}
           <div
             className={`mb-8 p-4 rounded-lg border ${
               isRenewal
@@ -262,11 +273,7 @@ export default function UpgradePage() {
                 </h3>
                 <p className={isRenewal ? "text-orange-700" : "text-blue-700"}>
                   {isRenewal
-                    ? `${
-                        remainingDays && remainingDays === 1
-                          ? remainingDays + " day"
-                          : remainingDays + " days"
-                      } remaining - Renewal will extend your subscription`
+                    ? `${remainingDays} days remaining - Choose features for your next cycle`
                     : "Limited to 5 menu items"}
                 </p>
               </div>
@@ -276,218 +283,286 @@ export default function UpgradePage() {
             </div>
           </div>
 
-          {/* Promo Code Section */}
-          <div className="mb-8 max-w-md mx-auto">
-            <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
-              <h3 className="font-semibold text-gray-900 mb-4">
-                Have a promo code?
-              </h3>
-
-              {!promoApplied ? (
-                <div className="space-y-4">
-                  <div className="flex gap-2">
-                    <input
-                      type="text"
-                      value={promoCode}
-                      onChange={(e) =>
-                        setPromoCode(e.target.value.toUpperCase())
-                      }
-                      placeholder="Enter promo code"
-                      className="flex-1 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent"
-                      disabled={promoLoading}
-                    />
-                    <Button
-                      onClick={() => validatePromoCode(promoCode)}
-                      disabled={promoLoading || !promoCode.trim()}
-                      className="bg-orange-500 hover:bg-orange-600"
-                    >
-                      {promoLoading ? "Checking..." : "Apply"}
-                    </Button>
-                  </div>
-
-                  {promoError && (
-                    <p className="text-red-600 text-sm">{promoError}</p>
-                  )}
-                </div>
-              ) : (
-                <div className="bg-green-50 border border-green-200 rounded-lg p-4">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <p className="text-green-800 font-medium">
-                        Promo code "{promoCode}" applied!
-                      </p>
-                      <p className="text-green-600 text-sm">
-                        {promoDiscount}% discount on your subscription
-                      </p>
-                    </div>
-                    <Button
-                      onClick={removePromoCode}
-                      variant="outline"
-                      size="sm"
-                      className="text-green-700 border-green-300 hover:bg-green-100 bg-transparent"
-                    >
-                      Remove
-                    </Button>
-                  </div>
-                </div>
-              )}
-            </div>
-          </div>
-
-          {/* Pricing Cards */}
-          <div className="grid md:grid-cols-2 gap-8 max-w-3xl mx-auto mb-12">
-            {plansWithDiscount.map((plan) => (
-              <Card
-                key={plan.id}
-                className={`relative flex flex-col justify-around border-2 transition-all hover:shadow-lg ${
-                  plan.popular
-                    ? "border-orange-500 shadow-lg"
-                    : "border-gray-200 hover:border-orange-300"
-                }`}
-              >
-                {plan.popular && (
-                  <div className="absolute -top-3 left-1/2 transform -translate-x-1/2">
-                    <Badge className="bg-orange-600 hover:bg-orange-700 text-white">
-                      <Zap className="h-3 w-3 mr-1" />
-                      Best Value
-                    </Badge>
-                  </div>
-                )}
-
-                <CardHeader className="text-center pb-4">
-                  <CardTitle className="text-2xl font-bold text-gray-900">
-                    {plan.name}
+          <div className="grid lg:grid-cols-3 gap-8">
+            {/* Plan Selection */}
+            <div className="lg:col-span-2 space-y-6">
+              {/* Base Plan Selection */}
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <Crown className="h-5 w-5 text-orange-500" />
+                    Choose Your Base Plan
                   </CardTitle>
-                  <CardDescription className="text-gray-600">
-                    {plan.description}
+                  <CardDescription>
+                    All plans include core Pro features
                   </CardDescription>
-
-                  <div className="mt-6">
-                    {promoApplied && promoDiscount > 0 ? (
-                      <div>
-                        <div className="text-2xl text-gray-500 line-through">
-                          ₦{plan.originalPrice.toLocaleString()}
-                        </div>
-                        <div className="text-4xl font-bold text-green-600">
-                          ₦{plan.discountedPrice.toLocaleString()}
-                        </div>
-                        <div className="text-green-600 font-semibold text-sm">
-                          Save ₦
-                          {(
-                            plan.originalPrice - plan.discountedPrice
-                          ).toLocaleString()}{" "}
-                          with {promoCode}
-                        </div>
-                      </div>
-                    ) : (
-                      <div className="text-4xl font-bold">
-                        ₦{plan.price.toLocaleString()}
-                      </div>
-                    )}
-                    <div className="text-gray-600">per {plan.period}</div>
-
-                    {isRenewal && remainingDays > 0 && (
-                      <div className="mt-2">
-                        <span className="text-orange-600 font-semibold text-sm bg-orange-50 px-3 py-1 rounded-full">
-                          +
-                          {remainingDays && remainingDays === 1
-                            ? remainingDays + " day"
-                            : remainingDays + " days"}{" "}
-                          will be added to your new subscription
-                        </span>
-                      </div>
-                    )}
-
-                    {plan.savings && !promoApplied && (
-                      <div className="mt-2">
-                        <span className="text-green-600 font-semibold text-sm bg-green-50 px-3 py-1 rounded-full">
-                          Save ₦{plan.savings.toLocaleString()}
-                        </span>
-                      </div>
-                    )}
-
-                    {plan.period === "year" && (
-                      <p className="text-sm text-gray-500 mt-2">
-                        Just ₦
-                        {Math.round(
-                          (promoApplied ? plan.discountedPrice : plan.price) /
-                            12
-                        ).toLocaleString()}
-                        /month
-                      </p>
-                    )}
-                  </div>
                 </CardHeader>
+                <CardContent>
+                  <div className="grid md:grid-cols-2 gap-4">
+                    {basePlans.map((plan) => (
+                      <div
+                        key={plan.id}
+                        className={`relative p-4 rounded-lg border-2 cursor-pointer transition-all ${
+                          selectedPlan === plan.duration
+                            ? "border-orange-500 bg-orange-50"
+                            : "border-gray-200 hover:border-orange-300"
+                        }`}
+                        onClick={() => setSelectedPlan(plan.duration)}
+                      >
+                        {plan.popular && (
+                          <Badge className="absolute -top-2 left-4 bg-orange-500">
+                            <Zap className="h-3 w-3 mr-1" />
+                            Best Value
+                          </Badge>
+                        )}
 
-                <CardContent className="pt-4">
-                  <div className="text-center">
-                    <p className="text-gray-600 font-medium">
-                      All Premium features included
-                    </p>
-                    <p className="text-sm text-gray-500">
-                      Full access to everything
-                    </p>
+                        <div className="text-center">
+                          <h3 className="font-semibold text-lg">{plan.name}</h3>
+                          <p className="text-sm text-gray-600 mb-2">
+                            {plan.description}
+                          </p>
+                          <div className="text-2xl font-bold">
+                            {formatPrice(BASE_PRO_PRICE[plan.duration])}
+                          </div>
+                          <div className="text-sm text-gray-500">
+                            per {plan.duration}
+                          </div>
+                          {plan.duration === "yearly" && (
+                            <div className="text-sm text-green-600 font-medium mt-1">
+                              Save ₦10,000 yearly
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+
+                  {/* Core Features */}
+                  <div className="mt-6">
+                    <h4 className="font-medium mb-3 text-gray-900">
+                      Included Core Features:
+                    </h4>
+                    <div className="grid md:grid-cols-2 gap-2">
+                      {CORE_PRO_FEATURES.map((feature) => (
+                        <div
+                          key={feature.id}
+                          className="flex items-center gap-2 text-sm"
+                        >
+                          <Check className="h-4 w-4 text-green-500" />
+                          <span>{feature.name}</span>
+                        </div>
+                      ))}
+                    </div>
                   </div>
                 </CardContent>
+              </Card>
 
+              {/* Addon Features */}
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <Plus className="h-5 w-5 text-blue-500" />
+                    Optional Add-on Features
+                  </CardTitle>
+                  <CardDescription>
+                    Select additional features you need (optional)
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-4">
+                    {ADDON_FEATURES.map((addon) => (
+                      <div
+                        key={addon.id}
+                        className={`p-4 rounded-lg border-2 transition-all ${
+                          selectedAddons.includes(addon.id)
+                            ? "border-blue-500 bg-blue-50"
+                            : "border-gray-200"
+                        }`}
+                      >
+                        <div className="flex items-start gap-3">
+                          <Checkbox
+                            id={addon.id}
+                            checked={selectedAddons.includes(addon.id)}
+                            onCheckedChange={() => handleAddonToggle(addon.id)}
+                            className="mt-1"
+                          />
+                          <div className="flex-1">
+                            <div className="flex items-center justify-between">
+                              <label
+                                htmlFor={addon.id}
+                                className="font-medium cursor-pointer"
+                              >
+                                {addon.name}
+                              </label>
+                              <div className="text-right">
+                                <div className="font-semibold">
+                                  +{formatPrice(addon.price)}/month
+                                </div>
+                                {selectedPlan === "yearly" && (
+                                  <div className="text-sm text-gray-500">
+                                    {formatPrice(addon.price * 12)}/year
+                                  </div>
+                                )}
+                              </div>
+                            </div>
+                            <p className="text-sm text-gray-600 mt-1">
+                              {addon.description}
+                            </p>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
+
+            {/* Order Summary */}
+            <div className="space-y-6">
+              {/* Promo Code */}
+              <Card>
+                <CardHeader>
+                  <CardTitle className="text-lg">Promo Code</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  {!promoApplied ? (
+                    <div className="space-y-3">
+                      <input
+                        type="text"
+                        value={promoCode}
+                        onChange={(e) =>
+                          setPromoCode(e.target.value.toUpperCase())
+                        }
+                        placeholder="Enter promo code"
+                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-orange-500"
+                        disabled={promoLoading}
+                      />
+                      <Button
+                        onClick={() => validatePromoCode(promoCode)}
+                        disabled={promoLoading || !promoCode.trim()}
+                        className="w-full bg-orange-500 hover:bg-orange-600"
+                        size="sm"
+                      >
+                        {promoLoading ? "Checking..." : "Apply"}
+                      </Button>
+                      {promoError && (
+                        <p className="text-red-600 text-sm">{promoError}</p>
+                      )}
+                    </div>
+                  ) : (
+                    <div className="bg-green-50 border border-green-200 rounded-lg p-3">
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <p className="text-green-800 font-medium text-sm">
+                            "{promoCode}" applied!
+                          </p>
+                          <p className="text-green-600 text-xs">
+                            {promoDiscount}% discount
+                          </p>
+                        </div>
+                        <Button
+                          onClick={removePromoCode}
+                          variant="outline"
+                          size="sm"
+                          className="text-green-700 border-green-300 hover:bg-green-100 bg-transparent"
+                        >
+                          Remove
+                        </Button>
+                      </div>
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+
+              {/* Order Summary */}
+              <Card>
+                <CardHeader>
+                  <CardTitle className="text-lg">Order Summary</CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-3">
+                  <div className="flex justify-between">
+                    <span>
+                      Pro {selectedPlan === "yearly" ? "Yearly" : "Monthly"}
+                    </span>
+                    <span>{formatPrice(basePrice)}</span>
+                  </div>
+
+                  {selectedAddons.length > 0 && (
+                    <>
+                      <div className="border-t pt-2">
+                        <div className="text-sm font-medium text-gray-700 mb-2">
+                          Add-ons:
+                        </div>
+                        {selectedAddons.map((addonId) => {
+                          const addon = ADDON_FEATURES.find(
+                            (f) => f.id === addonId
+                          );
+                          if (!addon) return null;
+                          const price =
+                            selectedPlan === "yearly"
+                              ? addon.price * 12
+                              : addon.price;
+                          return (
+                            <div
+                              key={addonId}
+                              className="flex justify-between text-sm"
+                            >
+                              <span>{addon.name}</span>
+                              <span>+{formatPrice(price)}</span>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </>
+                  )}
+
+                  {promoApplied && promoDiscount > 0 && (
+                    <div className="flex justify-between text-green-600">
+                      <span>Discount ({promoDiscount}%)</span>
+                      <span>
+                        -
+                        {formatPrice(
+                          ((basePrice + addonsCost) * promoDiscount) / 100
+                        )}
+                      </span>
+                    </div>
+                  )}
+
+                  <div className="border-t pt-2">
+                    <div className="flex justify-between font-bold text-lg">
+                      <span>Total</span>
+                      <span>{formatPrice(totalCost)}</span>
+                    </div>
+                    {selectedPlan === "yearly" && (
+                      <p className="text-sm text-gray-500 text-right">
+                        Just {formatPrice(Math.round(totalCost / 12))}/month
+                      </p>
+                    )}
+                  </div>
+
+                  {isRenewal && remainingDays > 0 && (
+                    <div className="bg-orange-50 border border-orange-200 rounded p-3">
+                      <p className="text-orange-800 text-sm">
+                        <strong>Note:</strong> Your remaining {remainingDays}{" "}
+                        days will be added to your new subscription period.
+                      </p>
+                    </div>
+                  )}
+                </CardContent>
                 <CardFooter>
                   <Button
-                    onClick={() => handleUpgrade(plan.id)}
-                    disabled={processingPlan === plan.id}
-                    className={`w-full py-3 text-lg font-semibold ${
-                      plan.popular
-                        ? "bg-orange-600 hover:bg-orange-700"
-                        : "bg-gray-900 hover:bg-gray-800"
-                    }`}
+                    onClick={handleUpgrade}
+                    disabled={processingPayment}
+                    className="w-full bg-orange-600 hover:bg-orange-700 py-3"
                   >
-                    {processingPlan === plan.id ? (
-                      <>Processing...</>
-                    ) : (
-                      `${isRenewal ? "Renew with" : "Choose"} ${plan.name}`
-                    )}
+                    {processingPayment
+                      ? "Processing..."
+                      : `${isRenewal ? "Renew" : "Upgrade"} for ${formatPrice(
+                          totalCost
+                        )}`}
                   </Button>
                 </CardFooter>
               </Card>
-            ))}
-          </div>
-
-          {/* Features Comparison */}
-          <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-8">
-            <h3 className="text-2xl font-bold text-center mb-8">
-              Why Upgrade to Premium?
-            </h3>
-
-            <div className="grid md:grid-cols-3 gap-8">
-              <div className="text-center">
-                <div className="bg-orange-100 rounded-full p-4 w-16 h-16 mx-auto mb-4 flex items-center justify-center">
-                  <Crown className="h-8 w-8 text-orange-500" />
-                </div>
-                <h4 className="font-semibold mb-2">Unlimited Items</h4>
-                <p className="text-gray-600">
-                  Add as many menu items as you want without restrictions
-                </p>
-              </div>
-
-              <div className="text-center">
-                <div className="bg-orange-100 rounded-full p-4 w-16 h-16 mx-auto mb-4 flex items-center justify-center">
-                  <Zap className="h-8 w-8 text-orange-500" />
-                </div>
-                <h4 className="font-semibold mb-2">Custom Branding</h4>
-                <p className="text-gray-600">
-                  Personalize your menu with your restaurant's colors and logo
-                </p>
-              </div>
-
-              <div className="text-center">
-                <div className="bg-orange-100 rounded-full p-4 w-16 h-16 mx-auto mb-4 flex items-center justify-center">
-                  <Smartphone className="h-8 w-8 text-orange-500" />
-                </div>
-                <h4 className="font-semibold mb-2">Installable Menu App (PWA)</h4>
-                <p className="text-gray-600">
-                  Customers can save your menu to their phone and use it like an
-                  app.
-                </p>
-              </div>
             </div>
           </div>
 

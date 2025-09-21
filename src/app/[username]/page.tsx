@@ -7,6 +7,7 @@ import { Metadata } from "next";
 import { formatText } from "@/lib/utils";
 import { MENU_CACHE_PREFIX } from "@/constants/app";
 import { metadataCache } from "@/lib/metadataCache";
+import { Feature } from "@/lib/features";
 
 interface UserMenuPageProps {
   params: Promise<{
@@ -17,7 +18,7 @@ interface UserMenuPageProps {
 async function getUserByUsername(username: string): Promise<{
   id: string;
   username: string;
-  subscription: { plan: string };
+  subscription: { plan: string; features: Feature[] };
 } | null> {
   const userPublicRef = ref(db, "userPublic");
   const usersQuery = query(

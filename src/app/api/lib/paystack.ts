@@ -29,7 +29,8 @@ interface PaystackVerifyResponse {
       plan: string;
       email: string;
       isRenewal?: boolean;
-      remainingDays?: number
+      remainingDays?: number;
+      selectedFeatures: string[];
     };
     customer: {
       id: number;
@@ -102,7 +103,8 @@ export class PaystackService {
       originalAmount?: number;
       finalAmount?: number;
       isRenewal?: boolean;
-      remainingDays?: number
+      remainingDays?: number;
+      selectedFeatures: string[];
     };
   }): Promise<PaystackInitializeResponse> {
     return this.makeRequest("/transaction/initialize", {

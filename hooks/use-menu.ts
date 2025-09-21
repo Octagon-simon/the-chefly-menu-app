@@ -116,6 +116,11 @@ export const useMenu = () => {
         };
       }
 
+      // If isCombo is false, remove subItems entirely
+      if (!item.isCombo) {
+        delete item.subItems;
+      }
+
       // Proceed with adding the new item
       const newItem = {
         ...item,
@@ -123,7 +128,7 @@ export const useMenu = () => {
         createdAt: now,
         updatedAt: now,
       };
-
+      console.log(newItem);
       const newRef = push(ref(db, "menuItems"));
       await set(newRef, newItem);
 

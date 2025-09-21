@@ -10,9 +10,10 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { UpgradeBanner } from "@/components/upgrade-banner";
-import { Upload, Crown } from "lucide-react";
+import { Upload, Crown, MessageCircle } from "lucide-react";
 import { toast } from "react-toastify";
 import { useRouter } from "next/navigation";
+import { hasFeatureAccess } from "@/lib/features";
 
 export const BrandSettings = () => {
   const { user, loading: userLoading } = useAuth();
@@ -20,6 +21,9 @@ export const BrandSettings = () => {
   const router = useRouter();
 
   const isPro = user?.subscription.plan === "pro";
+  const hasWhatsAppFeature = user?.subscription.features
+    ? hasFeatureAccess(user.subscription.features, "whatsapp_ordering")
+    : false;
 
   const [formData, setFormData] = useState({
     name: brand?.name || "",
@@ -27,6 +31,7 @@ export const BrandSettings = () => {
     logo: brand?.logo || "",
     primaryColor: brand?.primaryColor || "#3B82F6",
     secondaryColor: brand?.secondaryColor || "#10B981",
+    whatsappNumber: brand?.whatsappNumber || "",
   });
   const [loading, setLoading] = useState(false);
   const [uploadingLogo, setUploadingLogo] = useState(false);
@@ -86,6 +91,16 @@ export const BrandSettings = () => {
       return;
     }
 
+    if (
+      formData.whatsappNumber &&
+      !formData.whatsappNumber.match(/^\+?[1-9]\d{1,14}$/)
+    ) {
+      toast.error(
+        "Please enter a valid WhatsApp number (e.g., +2348012345678)"
+      );
+      return;
+    }
+
     setLoading(true);
 
     const result = await updateBrand({
@@ -94,6 +109,7 @@ export const BrandSettings = () => {
       logo: formData.logo,
       primaryColor: formData.primaryColor,
       secondaryColor: formData.secondaryColor,
+      whatsappNumber: formData.whatsappNumber.trim(),
     });
 
     if (result.success) {
@@ -257,6 +273,34 @@ export const BrandSettings = () => {
                   disabled={!isPro}
                   placeholder="#10B981"
                 />
+              </div>
+            </div>
+          </div>
+
+          <div>
+            <Label htmlFor="whatsappNumber">WhatsApp Sales Number</Label>
+            <div className="flex gap-2 mt-1">
+              <MessageCircle className="w-5 h-5 text-green-500 mt-2.5" />
+              <div className="flex-1">
+                <Input
+                  id="whatsappNumber"
+                  type="tel"
+                  value={formData.whatsappNumber}
+                  onChange={(e) =>
+                    setFormData({ ...formData, whatsappNumber: e.target.value })
+                  }
+                  placeholder="+2348012345678"
+                  disabled={!hasWhatsAppFeature}
+                />
+                {!hasWhatsAppFeature ? (
+                  <p className="text-sm text-gray-500 mt-1">
+                    WhatsApp Ordering feature required (₦2,500/month addon)
+                  </p>
+                ) : (
+                  <p className="text-sm text-gray-600 mt-1">
+                    Customers can order directly via WhatsApp using this number
+                  </p>
+                )}
               </div>
             </div>
           </div>

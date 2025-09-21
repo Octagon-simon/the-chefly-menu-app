@@ -13,13 +13,20 @@ import {
   Search,
   Utensils,
   X,
+  MessageCircle,
+  ShoppingCart,
+  Plus,
+  Minus,
+  Phone,
 } from "lucide-react";
 import type { MenuItem } from "@/types/menu";
 import Image from "next/image";
 import type { ItemDetailModalProps, MenuDisplayProps } from "./types";
 import { debounce } from "lodash";
-import ShareOrInstallButton from "./share-or-install-button";
+import { hasFeatureAccess } from "@/lib/features";
 import { QRCodeComponent } from "./qr-code";
+import ShareOrInstallButton from "./share-or-install-button";
+import type { OrderItem } from "@/types/order";
 
 export const MenuDisplay = ({
   user,
@@ -27,6 +34,7 @@ export const MenuDisplay = ({
   categories,
   brand,
 }: MenuDisplayProps) => {
+  console.log(user, "sees");
   const [selectedCategory, setSelectedCategory] = useState<string>("All");
   const [selectedItem, setSelectedItem] = useState<MenuItem | null>(null);
   const [showQR, setShowQR] = useState(false);
@@ -35,6 +43,7 @@ export const MenuDisplay = ({
   const [showSearchDropdown, setShowSearchDropdown] = useState(false);
   const [debouncedSearchQuery, setDebouncedSearchQuery] = useState("");
   const searchContainerRef = useRef<HTMLDivElement>(null);
+  const [cart, setCart] = useState<OrderItem[]>([]);
 
   const filteredItems = useMemo(() => {
     const filtered = menuItems.filter((item) => {
@@ -146,6 +155,78 @@ export const MenuDisplay = ({
     brand?.secondaryColor?.toLowerCase() === "#ffffff"
       ? "#059669"
       : brand?.secondaryColor || "#059669";
+
+  const addToCart = (menuItem: MenuItem, selectedCombos: any[] = []) => {
+    const comboPrice = selectedCombos.reduce(
+      (sum, combo) => sum + (combo.price || 0),
+      0
+    );
+    const totalItemPrice = menuItem.price + comboPrice;
+
+    const existingItem = cart.find(
+      (item) =>
+        item.menuItemId === menuItem.id &&
+        JSON.stringify(item.selectedCombos) === JSON.stringify(selectedCombos)
+    );
+
+    if (existingItem) {
+      setCart((prev) =>
+        prev.map((item) =>
+          item.id === existingItem.id
+            ? {
+                ...item,
+                quantity: item.quantity + 1,
+                totalPrice: (item.quantity + 1) * totalItemPrice,
+              }
+            : item
+        )
+      );
+    } else {
+      const newOrderItem: OrderItem = {
+        id: `${menuItem.id}-${Date.now()}-${Math.random()}`,
+        menuItemId: menuItem.id,
+        name: menuItem.name,
+        price: totalItemPrice,
+        quantity: 1,
+        selectedCombos: selectedCombos.map((combo) => ({
+          id: combo.id,
+          name: combo.name,
+          price: combo.price || 0,
+        })),
+        totalPrice: totalItemPrice,
+      };
+      setCart((prev) => [...prev, newOrderItem]);
+    }
+  };
+
+  const updateCartItemQuantity = (itemId: string, newQuantity: number) => {
+    if (newQuantity <= 0) {
+      setCart((prev) => prev.filter((item) => item.id !== itemId));
+    } else {
+      setCart((prev) =>
+        prev.map((item) =>
+          item.id === itemId
+            ? {
+                ...item,
+                quantity: newQuantity,
+                totalPrice: newQuantity * item.price,
+              }
+            : item
+        )
+      );
+    }
+  };
+
+  const removeFromCart = (itemId: string) => {
+    setCart((prev) => prev.filter((item) => item.id !== itemId));
+  };
+
+  const clearCart = () => {
+    setCart([]);
+  };
+
+  const cartTotal = cart.reduce((sum, item) => sum + item.totalPrice, 0);
+  const cartItemCount = cart.reduce((sum, item) => sum + item.quantity, 0);
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-amber-50 via-white to-emerald-50">
@@ -490,9 +571,9 @@ export const MenuDisplay = ({
                                 key={subItem.id}
                                 className="text-xs px-2 py-1 rounded"
                                 style={{
-                            backgroundColor: `${secondaryColor}20`,
-                            color: secondaryColor,
-                          }}
+                                  backgroundColor: `${secondaryColor}20`,
+                                  color: secondaryColor,
+                                }}
                               >
                                 {subItem.name}
                               </span>
@@ -535,6 +616,42 @@ export const MenuDisplay = ({
           primaryColor={primaryColor}
           secondaryColor={secondaryColor}
           userPlan={user.subscription.plan}
+          userFeatures={user.subscription.features || []}
+          brand={brand}
+          onAddToCart={addToCart}
+          cart={cart}
+        />
+      )}
+
+      {cartItemCount > 0 && (
+        <div className="fixed bottom-6 left-6 z-40">
+          <Button
+            onClick={() => {
+              /* Will implement cart modal */
+            }}
+            className="w-14 h-14 rounded-full shadow-2xl text-white relative hover:scale-110 transition-all duration-300"
+            style={{ backgroundColor: primaryColor }}
+          >
+            <ShoppingCart className="w-6 h-6" />
+            <Badge className="absolute -top-2 -right-2 bg-red-500 text-white border-0 min-w-[1.5rem] h-6 flex items-center justify-center text-xs">
+              {cartItemCount}
+            </Badge>
+          </Button>
+        </div>
+      )}
+
+      {cartItemCount > 0 && (
+        <CartModal
+          cart={cart}
+          onUpdateQuantity={updateCartItemQuantity}
+          onRemoveItem={removeFromCart}
+          onClearCart={clearCart}
+          primaryColor={primaryColor}
+          secondaryColor={secondaryColor}
+          brand={brand}
+          onClose={() => {
+            /* Will be handled by cart modal state */
+          }}
         />
       )}
 
@@ -557,11 +674,67 @@ const ItemDetailModal = ({
   primaryColor,
   secondaryColor,
   userPlan,
-}: ItemDetailModalProps) => {
+  userFeatures,
+  brand,
+  onAddToCart,
+  cart,
+}: ItemDetailModalProps & {
+  onAddToCart: (item: MenuItem, selectedCombos: any[]) => void;
+  cart: OrderItem[];
+}) => {
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
+  const [selectedCombos, setSelectedCombos] = useState<any[]>([]);
+  const [quantity, setQuantity] = useState(1);
 
   const displayImages =
     userPlan === "free" && item.images ? [item.images[0]] : item.images || [];
+
+  const hasWhatsAppFeature = hasFeatureAccess(userFeatures, [
+    "whatsapp_ordering",
+  ]);
+
+  const hasOrderingFeature = hasFeatureAccess(userFeatures, [
+    "whatsapp_ordering",
+    "manual_ordering",
+  ]);
+
+  const whatsappNumber = brand?.whatsappNumber;
+
+  const generateWhatsAppLink = () => {
+    if (!whatsappNumber) return "#";
+
+    const restaurantName = brand?.name || "Restaurant";
+    const itemName = item.name;
+
+    const comboPrice = selectedCombos.reduce(
+      (sum, combo) => sum + (combo.price || 0),
+      0
+    );
+    const itemTotalPrice = (item.price + comboPrice) * quantity;
+
+    const comboText =
+      selectedCombos.length > 0
+        ? `\n\nSelected Combos:\n${selectedCombos
+            .map(
+              (combo) =>
+                `    • ${combo.name} ${
+                  combo.price ? `(+${formatPrice(combo.price)})` : "(Free)"
+                }`
+            )
+            .join("\n")}`
+        : "";
+
+    const message = `Hello ${restaurantName}!\n\nI would like to order:\n    • Item: ${itemName}\n    • Quantity: ${quantity}\n    • Price per item: ${formatPrice(
+      item.price + comboPrice
+    )}${comboText}\n\nDelivery Details:\n    • Seat Number: [Please fill if valid]\n    • Address: [Please fill if valid]\n\nTotal Amount: ${formatPrice(
+      itemTotalPrice
+    )}\n\nThank you!`;
+
+    const encodedMessage = encodeURIComponent(message);
+    const cleanNumber = whatsappNumber.replace(/[^\d]/g, "");
+
+    return `https://wa.me/${cleanNumber}?text=${encodedMessage}`;
+  };
 
   const nextImage = () => {
     if (displayImages && displayImages.length > 1) {
@@ -575,6 +748,24 @@ const ItemDetailModal = ({
         (prev) => (prev - 1 + displayImages.length) % displayImages.length
       );
     }
+  };
+
+  const toggleCombo = (combo: any) => {
+    setSelectedCombos((prev) => {
+      const exists = prev.find((c) => c.id === combo.id);
+      if (exists) {
+        return prev.filter((c) => c.id !== combo.id);
+      } else {
+        return [...prev, combo];
+      }
+    });
+  };
+
+  const handleAddToCart = () => {
+    for (let i = 0; i < quantity; i++) {
+      onAddToCart(item, selectedCombos);
+    }
+    onClose();
   };
 
   return (
@@ -647,20 +838,64 @@ const ItemDetailModal = ({
               </p>
             )}
 
+            {hasOrderingFeature ? (
+              <div className="flex items-center gap-4 mb-4">
+                <span className="text-sm font-medium">Quantity:</span>
+                <div className="flex items-center gap-2">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setQuantity(Math.max(1, quantity - 1))}
+                    disabled={quantity <= 1}
+                  >
+                    <Minus className="w-4 h-4" />
+                  </Button>
+                  <span className="w-8 text-center font-medium">
+                    {quantity}
+                  </span>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setQuantity(quantity + 1)}
+                  >
+                    <Plus className="w-4 h-4" />
+                  </Button>
+                </div>
+              </div>
+            ) : null}
+
             {item.isCombo && item.subItems && item.subItems.length > 0 && (
               <div className="mb-6">
                 <h3 className="text-sm font-semibold text-foreground mb-3">
-                  Available Combos:
+                  Available Combos (Optional):
                 </h3>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                <div className="grid grid-cols-1 gap-2">
                   {item.subItems.map((subItem) => (
                     <div
                       key={subItem.id}
-                      className="flex justify-between items-center p-3 bg-gray-50 rounded-lg border"
+                      className={`flex justify-between items-center p-3 rounded-lg border cursor-pointer transition-colors ${
+                        selectedCombos.find((c) => c.id === subItem.id)
+                          ? "bg-blue-50 border-blue-200"
+                          : "bg-gray-50 hover:bg-gray-100"
+                      }`}
+                      onClick={() => toggleCombo(subItem)}
                     >
-                      <span className="text-sm font-medium text-foreground">
-                        {subItem.name}
-                      </span>
+                      <div className="flex items-center gap-3">
+                        <div
+                          className={`w-4 h-4 rounded border-2 flex items-center justify-center ${
+                            selectedCombos.find((c) => c.id === subItem.id)
+                              ? "bg-blue-500 border-blue-500"
+                              : "border-gray-300"
+                          }`}
+                        >
+                          {selectedCombos.find((c) => c.id === subItem.id) && (
+                            <div className="w-2 h-2 bg-white rounded-sm" />
+                          )}
+                        </div>
+                        <span className="text-sm font-medium text-foreground">
+                          {subItem.name}
+                        </span>
+                      </div>
                       <span
                         className="text-sm font-semibold"
                         style={{ color: secondaryColor }}
@@ -686,15 +921,446 @@ const ItemDetailModal = ({
               >
                 {item.category}
               </Badge>
-              <Button
-                onClick={onClose}
-                className="text-white px-6 py-2"
-                style={{ backgroundColor: primaryColor }}
-              >
-                Close
-              </Button>
+              <div className="flex flex-col sm:flex-row gap-2">
+                {hasOrderingFeature && (
+                  <>
+                    {/* Add to Cart Button */}
+                    <Button
+                      onClick={handleAddToCart}
+                      className="text-white px-4 py-2 flex items-center gap-2"
+                      style={{ backgroundColor: primaryColor }}
+                    >
+                      <ShoppingCart className="w-4 h-4" />
+                      Add to Cart (
+                      {formatPrice(
+                        (item.price +
+                          selectedCombos.reduce(
+                            (sum, combo) => sum + (combo.price || 0),
+                            0
+                          )) *
+                          quantity
+                      )}
+                      )
+                    </Button>
+
+                    {/* WhatsApp Order Button */}
+                    {hasWhatsAppFeature && whatsappNumber && (
+                      <Button
+                        onClick={() =>
+                          window.open(generateWhatsAppLink(), "_blank")
+                        }
+                        className="bg-green-500 hover:bg-green-600 text-white px-4 py-2 flex items-center gap-2"
+                      >
+                        <MessageCircle className="w-4 h-4" />
+                        Order via WhatsApp
+                      </Button>
+                    )}
+
+                    {/* Manual Order Button */}
+                    <Button
+                      onClick={() => {
+                        // Add to cart and show manual order form
+                        handleAddToCart();
+                        // This will trigger the cart modal to show manual order option
+                      }}
+                      variant="outline"
+                      className="px-4 py-2 flex items-center gap-2"
+                    >
+                      <Phone className="w-4 h-4" />
+                      Manual Order
+                    </Button>
+                  </>
+                )}
+                <Button
+                  onClick={onClose}
+                  variant="outline"
+                  className="px-6 py-2 bg-transparent"
+                >
+                  Close
+                </Button>
+              </div>
             </div>
           </div>
+        </CardContent>
+      </Card>
+    </div>
+  );
+};
+
+const CartModal = ({
+  cart,
+  onUpdateQuantity,
+  onRemoveItem,
+  onClearCart,
+  primaryColor,
+  secondaryColor,
+  brand,
+  onClose,
+}: {
+  cart: OrderItem[];
+  onUpdateQuantity: (itemId: string, quantity: number) => void;
+  onRemoveItem: (itemId: string) => void;
+  onClearCart: () => void;
+  primaryColor: string;
+  secondaryColor: string;
+  brand: any;
+  onClose: () => void;
+}) => {
+  const [showCart, setShowCart] = useState(false);
+  const [showManualOrderForm, setShowManualOrderForm] = useState(false);
+  const [customerInfo, setCustomerInfo] = useState({
+    name: "",
+    phone: "",
+    address: "",
+    notes: "",
+  });
+
+  const cartTotal = cart.reduce((sum, item) => sum + item.totalPrice, 0);
+  const cartItemCount = cart.reduce((sum, item) => sum + item.quantity, 0);
+
+  const generateWhatsAppOrderLink = () => {
+    if (!brand?.whatsappNumber) return "#";
+
+    const restaurantName = brand?.name || "Restaurant";
+    const itemsList = cart
+      .map((item) => {
+        const combosText =
+          item.selectedCombos && item.selectedCombos.length > 0
+            ? ` (${item.selectedCombos.map((c) => c.name).join(", ")})`
+            : "";
+        return `    • ${item.quantity}x ${
+          item.name
+        }${combosText} - ${formatPrice(item.totalPrice)}`;
+      })
+      .join("\n");
+
+    const message = `Hello ${restaurantName}!\n\nI would like to order:\n${itemsList}\n\nDelivery Details:\n    • Seat Number: [Please fill if valid]\n    • Address: [Please fill if valid]\n\nTotal Amount: ${formatPrice(
+      cartTotal
+    )}\n\nThank you!`;
+
+    const encodedMessage = encodeURIComponent(message);
+    const cleanNumber = brand.whatsappNumber.replace(/[^\d]/g, "");
+
+    return `https://wa.me/${cleanNumber}?text=${encodedMessage}`;
+  };
+
+  const handleManualOrder = () => {
+    if (
+      !customerInfo.name.trim() ||
+      !customerInfo.phone.trim() ||
+      !customerInfo.address.trim()
+    ) {
+      alert("Please fill in all required customer details");
+      return;
+    }
+
+    // Here you would typically send the order to your backend
+    // For now, we'll just show a success message
+    alert(
+      `Manual order placed successfully!\n\nCustomer: ${
+        customerInfo.name
+      }\nPhone: ${customerInfo.phone}\nAddress: ${
+        customerInfo.address
+      }\nTotal: ${formatPrice(cartTotal)}`
+    );
+
+    onClearCart();
+    setShowManualOrderForm(false);
+    setShowCart(false);
+  };
+
+  if (!showCart) {
+    return (
+      <Button
+        onClick={() => setShowCart(true)}
+        className="fixed bottom-6 left-6 w-14 h-14 rounded-full shadow-2xl text-white relative hover:scale-110 transition-all duration-300 z-40"
+        style={{ backgroundColor: primaryColor }}
+      >
+        <ShoppingCart className="w-6 h-6" />
+        <Badge className="absolute -top-2 -right-2 bg-red-500 text-white border-0 min-w-[1.5rem] h-6 flex items-center justify-center text-xs">
+          {cartItemCount}
+        </Badge>
+      </Button>
+    );
+  }
+
+  if (showManualOrderForm) {
+    return (
+      <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 z-50">
+        <Card className="w-full max-w-2xl max-h-[90vh] overflow-y-auto bg-white shadow-2xl">
+          <CardContent className="p-6">
+            <div className="flex justify-between items-center mb-6">
+              <h2 className="text-xl font-bold">Manual Order Details</h2>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setShowManualOrderForm(false)}
+              >
+                <X className="w-4 h-4" />
+              </Button>
+            </div>
+
+            {/* Order Summary */}
+            <div className="mb-6">
+              <h3 className="font-semibold mb-3">Order Summary</h3>
+              <div className="space-y-2 max-h-40 overflow-y-auto">
+                {cart.map((item) => (
+                  <div
+                    key={item.id}
+                    className="flex justify-between items-center p-2 bg-gray-50 rounded"
+                  >
+                    <div>
+                      <span className="font-medium">
+                        {item.quantity}x {item.name}
+                      </span>
+                      {item.selectedCombos &&
+                        item.selectedCombos.length > 0 && (
+                          <div className="text-xs text-gray-600">
+                            Combos:{" "}
+                            {item.selectedCombos.map((c) => c.name).join(", ")}
+                          </div>
+                        )}
+                    </div>
+                    <span
+                      className="font-semibold"
+                      style={{ color: secondaryColor }}
+                    >
+                      {formatPrice(item.totalPrice)}
+                    </span>
+                  </div>
+                ))}
+              </div>
+              <div className="flex justify-between items-center p-3 bg-green-50 rounded-lg mt-3">
+                <span className="font-bold">Total:</span>
+                <span className="text-lg font-bold text-green-600">
+                  {formatPrice(cartTotal)}
+                </span>
+              </div>
+            </div>
+
+            {/* Customer Information Form */}
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium mb-1">
+                  Customer Name *
+                </label>
+                <Input
+                  value={customerInfo.name}
+                  onChange={(e) =>
+                    setCustomerInfo((prev) => ({
+                      ...prev,
+                      name: e.target.value,
+                    }))
+                  }
+                  placeholder="Enter your name"
+                  required
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium mb-1">
+                  Phone Number *
+                </label>
+                <Input
+                  value={customerInfo.phone}
+                  onChange={(e) =>
+                    setCustomerInfo((prev) => ({
+                      ...prev,
+                      phone: e.target.value,
+                    }))
+                  }
+                  placeholder="Enter your phone number"
+                  required
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium mb-1">
+                  Delivery Address *
+                </label>
+                <textarea
+                  className="w-full p-2 border rounded-md"
+                  rows={3}
+                  value={customerInfo.address}
+                  onChange={(e) =>
+                    setCustomerInfo((prev) => ({
+                      ...prev,
+                      address: e.target.value,
+                    }))
+                  }
+                  placeholder="Enter your delivery address"
+                  required
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium mb-1">
+                  Special Notes (Optional)
+                </label>
+                <textarea
+                  className="w-full p-2 border rounded-md"
+                  rows={2}
+                  value={customerInfo.notes}
+                  onChange={(e) =>
+                    setCustomerInfo((prev) => ({
+                      ...prev,
+                      notes: e.target.value,
+                    }))
+                  }
+                  placeholder="Any special instructions"
+                />
+              </div>
+            </div>
+
+            <div className="flex gap-3 mt-6">
+              <Button
+                variant="outline"
+                onClick={() => setShowManualOrderForm(false)}
+                className="flex-1"
+              >
+                Back to Cart
+              </Button>
+              <Button
+                onClick={handleManualOrder}
+                className="flex-1 text-white"
+                style={{ backgroundColor: primaryColor }}
+              >
+                Place Manual Order
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
+  return (
+    <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 z-50">
+      <Card className="w-full max-w-2xl max-h-[90vh] overflow-y-auto bg-white shadow-2xl">
+        <CardContent className="p-6">
+          <div className="flex justify-between items-center mb-6">
+            <h2 className="text-xl font-bold flex items-center gap-2">
+              <ShoppingCart className="w-5 h-5" />
+              Your Cart ({cartItemCount} items)
+            </h2>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => setShowCart(false)}
+            >
+              <X className="w-4 h-4" />
+            </Button>
+          </div>
+
+          {cart.length === 0 ? (
+            <div className="text-center py-8">
+              <ShoppingCart className="w-16 h-16 mx-auto mb-4 text-gray-300" />
+              <p className="text-gray-500">Your cart is empty</p>
+            </div>
+          ) : (
+            <>
+              <div className="space-y-3 mb-6 max-h-60 overflow-y-auto">
+                {cart.map((item) => (
+                  <div
+                    key={item.id}
+                    className="flex items-center justify-between p-3 bg-gray-50 rounded-lg"
+                  >
+                    <div className="flex-1">
+                      <h4 className="font-medium">{item.name}</h4>
+                      {item.selectedCombos &&
+                        item.selectedCombos.length > 0 && (
+                          <p className="text-xs text-gray-600">
+                            Combos:{" "}
+                            {item.selectedCombos.map((c) => c.name).join(", ")}
+                          </p>
+                        )}
+                      <p className="text-sm text-gray-600">
+                        {formatPrice(item.price)} each
+                      </p>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() =>
+                          onUpdateQuantity(item.id, item.quantity - 1)
+                        }
+                      >
+                        <Minus className="w-3 h-3" />
+                      </Button>
+                      <span className="w-8 text-center">{item.quantity}</span>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() =>
+                          onUpdateQuantity(item.id, item.quantity + 1)
+                        }
+                      >
+                        <Plus className="w-3 h-3" />
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="destructive"
+                        onClick={() => onRemoveItem(item.id)}
+                      >
+                        <X className="w-3 h-3" />
+                      </Button>
+                    </div>
+                    <div
+                      className="text-sm font-semibold ml-4"
+                      style={{ color: secondaryColor }}
+                    >
+                      {formatPrice(item.totalPrice)}
+                    </div>
+                  </div>
+                ))}
+              </div>
+
+              <div className="flex justify-between items-center p-4 bg-green-50 rounded-lg mb-6">
+                <span className="text-lg font-bold">Total:</span>
+                <span className="text-xl font-bold text-green-600">
+                  {formatPrice(cartTotal)}
+                </span>
+              </div>
+
+              <div className="space-y-3">
+                {brand?.whatsappNumber && (
+                  <Button
+                    onClick={() =>
+                      window.open(generateWhatsAppOrderLink(), "_blank")
+                    }
+                    className="w-full bg-green-500 hover:bg-green-600 text-white flex items-center justify-center gap-2"
+                  >
+                    <MessageCircle className="w-4 h-4" />
+                    Order via WhatsApp
+                  </Button>
+                )}
+
+                <Button
+                  onClick={() => setShowManualOrderForm(true)}
+                  className="w-full text-white flex items-center justify-center gap-2"
+                  style={{ backgroundColor: primaryColor }}
+                >
+                  <Phone className="w-4 h-4" />
+                  Place Manual Order
+                </Button>
+
+                <div className="flex gap-2">
+                  <Button
+                    variant="outline"
+                    onClick={onClearCart}
+                    className="flex-1 bg-transparent"
+                  >
+                    Clear Cart
+                  </Button>
+                  <Button
+                    variant="outline"
+                    onClick={() => setShowCart(false)}
+                    className="flex-1"
+                  >
+                    Continue Shopping
+                  </Button>
+                </div>
+              </div>
+            </>
+          )}
         </CardContent>
       </Card>
     </div>

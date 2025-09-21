@@ -1,7 +1,13 @@
-import { Brand, Category, MenuItem } from "@/types/menu";
+import type React from "react";
+import type { Feature } from "@/lib/features";
+import type { Brand, Category, MenuItem } from "@/types/menu";
 
 export interface MenuDisplayProps {
-  user: { id: string; username: string; subscription: { plan: string } };
+  user: {
+    id: string;
+    username: string;
+    subscription: { plan: string; features: Feature[] };
+  };
   menuItems: MenuItem[];
   categories: Category[];
   brand: Brand | null;
@@ -24,6 +30,10 @@ export interface ItemDetailModalProps {
   primaryColor: string;
   secondaryColor: string;
   userPlan: string;
+  userFeatures: Feature[];
+  brand?: any;
+  onAddToCart?: (item: MenuItem, selectedCombos: any[]) => void;
+  cart?: any[];
 }
 
 export interface MenuItemFormProps {
@@ -50,12 +60,12 @@ export interface SubscriptionBadgeProps {
 }
 
 export interface SubscriptionGuardProps {
-  children: React.ReactNode
-  feature: string
-  fallback?: React.ReactNode
+  children: React.ReactNode;
+  feature: string;
+  fallback?: React.ReactNode;
 }
 
 export interface UpgradeBannerProps {
-  message: string
-  onUpgrade: () => void
+  message: string;
+  onUpgrade: () => void;
 }

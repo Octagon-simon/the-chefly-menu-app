@@ -1,3 +1,4 @@
+import { ADDON_FEATURES, BASE_PRO_PRICE, Feature } from "@/lib/features";
 import type { User, UserSubscription } from "@/types/menu";
 import { initializeApp, getApps, cert } from "firebase-admin/app";
 import { getDatabase } from "firebase-admin/database";
@@ -21,7 +22,8 @@ export async function upgradeUserToPro(
   plan: "monthly" | "yearly",
   paymentReference: string,
   isRenewal = false,
-  remainingDays = 0
+  remainingDays = 0,
+  selectedFeatures: string[]
 ): Promise<boolean> {
   try {
     const db = getDatabase();
@@ -60,6 +62,7 @@ export async function upgradeUserToPro(
       startDate: startDate.toISOString(),
       endDate: endDate.toISOString(),
       updatedAt: now.toISOString(),
+      features: selectedFeatures,
     };
 
     //update private user document
@@ -70,7 +73,10 @@ export async function upgradeUserToPro(
 
     //update public user document
     await publicUserRef.update({
-      subscription: { plan: updatedSubscription.plan },
+      subscription: {
+        plan: updatedSubscription.plan,
+        features: updatedSubscription.features,
+      },
     });
 
     const paymentRef = db.ref(`payments/${paymentReference}`);
@@ -89,3 +95,33 @@ export async function upgradeUserToPro(
     return false;
   }
 }
+
+export const calculateTotalSubscriptionCost = (
+  selectedPlan: "yearly" | "monthly",
+  selectedAddons: Feature[],
+  promoDiscount: number = 0
+) => {
+  const basePrice = BASE_PRO_PRICE[selectedPlan];
+
+  // prevent duplicate features by id
+  const uniqueAddons = Array.from(
+    new Map(selectedAddons.map((f) => [f.id, f])).values()
+  );
+
+  const addonPrice = uniqueAddons.reduce(
+    (total, addon) => total + addon.price,
+    0
+  );
+
+  // yearly plan multiplies addons by 12
+  const totalAddonPrice =
+    selectedPlan === "yearly" ? addonPrice * 12 : addonPrice;
+
+  const totalPrice = basePrice + totalAddonPrice;
+
+  // clamp discount between 0–100
+  const validDiscount = Math.min(Math.max(promoDiscount, 0), 100);
+
+  // always return a whole number
+  return Math.round(totalPrice - (totalPrice * validDiscount) / 100);
+};

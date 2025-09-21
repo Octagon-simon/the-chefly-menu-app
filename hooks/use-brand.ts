@@ -52,8 +52,11 @@ export const useBrand = () => {
         name: brandData.name || brand?.name || "",
         description: brandData.description || brand?.description || "",
         logo: brandData.logo || brand?.logo || "",
-        primaryColor: brandData.primaryColor || brand?.primaryColor || "#3B82F6",
-        secondaryColor: brandData.secondaryColor || brand?.secondaryColor || "#10B981",
+        primaryColor:
+          brandData.primaryColor || brand?.primaryColor || "#3B82F6",
+        secondaryColor:
+          brandData.secondaryColor || brand?.secondaryColor || "#10B981",
+        whatsappNumber: brandData.whatsappNumber || "",
         createdAt: brand?.createdAt || now,
         updatedAt: now,
       };
@@ -65,6 +68,7 @@ export const useBrand = () => {
           logo: updatedBrand.logo,
           primaryColor: updatedBrand.primaryColor,
           secondaryColor: updatedBrand.secondaryColor,
+          whatsappNumber: updatedBrand.whatsappNumber,
           updatedAt: updatedBrand.updatedAt,
         });
       } else {
