@@ -116,6 +116,11 @@ export const useMenu = () => {
         };
       }
 
+      // If isCombo is false, remove subItems entirely to prevent undefined errors
+      if (!item.isCombo) {
+        delete item.subItems;
+      }
+
       // Proceed with adding the new item
       const newItem = {
         ...item,
