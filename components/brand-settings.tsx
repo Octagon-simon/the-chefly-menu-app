@@ -11,7 +11,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { UpgradeBanner } from "@/components/upgrade-banner";
 import { Upload, Crown, MessageCircle } from "lucide-react";
-import { toast } from "react-toastify";
+import { toast } from "sonner";
 import { useRouter } from "next/navigation";
 import { hasFeatureAccess } from "@/lib/features";
 

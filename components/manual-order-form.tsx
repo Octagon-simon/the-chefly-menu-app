@@ -9,11 +9,11 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Plus, Minus, ShoppingCart, X } from "lucide-react";
-import { toast } from "react-toastify";
 import type { MenuItem } from "@/types/menu";
 import type { OrderItem, Customer } from "@/types/order";
 import { formatPrice } from "@/lib/utils";
 import { SearchableMenuSelector } from "./searchable-menu-selector";
+import { toast } from "sonner";
 
 interface ManualOrderFormProps {
   menuItems: MenuItem[];

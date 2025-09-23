@@ -17,7 +17,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Crown, Zap, ArrowLeft, Check, Plus } from "lucide-react";
 import { LoadingSpinner } from "@/components/loading-spinner";
 import { getAuth } from "firebase/auth";
-import { toast } from "react-toastify";
+import { toast } from "sonner";
 import {
   CORE_PRO_FEATURES,
   ADDON_FEATURES,

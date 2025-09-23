@@ -208,6 +208,8 @@ export const MenuDisplay = ({
       };
       setCart((prev) => [...prev, newOrderItem]);
     }
+
+    toast.success("Cart has been updated");
   };
 
   const updateCartItemQuantity = (itemId: string, newQuantity: number) => {
@@ -518,7 +520,7 @@ export const MenuDisplay = ({
               >
                 <div className="lg:flex">
                   {item.images && item.images.length > 0 && (
-                    <div className="lg:w-80 relative overflow-hidden flex-shrink-0">
+                    <div className="lg:w-80 h-48 lg:h-56 relative overflow-hidden flex-shrink-0">
                       <Image
                         src={item.images[0] || "/placeholder.svg"}
                         alt={item.name}

@@ -18,7 +18,7 @@ interface UserMenuPageProps {
 async function getUserByUsername(username: string): Promise<{
   id: string;
   username: string;
-  subscription: { plan: string; features: Feature[] };
+  subscription: { plan: string; features: Feature["id"][] };
 } | null> {
   const userPublicRef = ref(db, "userPublic");
   const usersQuery = query(

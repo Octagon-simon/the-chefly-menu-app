@@ -19,7 +19,7 @@ import {
 import { UpgradeBanner } from "@/components/upgrade-banner";
 import { ComboForm } from "@/components/combo-form";
 import { X, Upload, Trash2 } from "lucide-react";
-import { toast } from "react-toastify";
+import { toast } from "sonner";
 import { useRouter } from "next/navigation";
 import { MenuItemFormProps } from "./types";
 
