@@ -47,6 +47,7 @@ import {
   filterOrdersByDateRange,
 } from "@/lib/utils";
 import { toast } from "sonner";
+import { NotificationSetup } from "@/components/notification-setup";
 
 export default function AdminPage() {
   const { user, loading: authLoading, logout } = useAuth();
@@ -405,6 +406,7 @@ export default function AdminPage() {
                   Subscription Expired
                 </div>
               )}
+               <NotificationSetup />
               <a
                 href={menuUrl}
                 target="_blank"
@@ -445,6 +447,7 @@ export default function AdminPage() {
                     Subscription Expired
                   </div>
                 )}
+                 <NotificationSetup />
                 <a
                   href={menuUrl}
                   target="_blank"

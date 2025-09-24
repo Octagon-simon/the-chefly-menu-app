@@ -15,10 +15,14 @@ import {
 import type { Order, OrderItem, Customer, OrderSummary } from "@/types/order";
 import { useAuth } from "./use-auth";
 import { useAnalytics } from "./use-analytics";
+import { useBrand } from "./use-brand";
+import { useNotifications } from "./use-notifications";
 
 export const useOrders = () => {
   const { user } = useAuth();
   const { updateAnalytics } = useAnalytics();
+  const { showOrderNotification, sendEmailNotification } = useNotifications();
+  const { brand } = useBrand();
   const [orders, setOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(true);
   const [summary, setSummary] = useState<OrderSummary>({
@@ -168,6 +172,29 @@ export const useOrders = () => {
       const orderRef = await push(ordersRef, newOrder);
 
       if (orderRef.key) {
+        const orderNumber = `ORD-${Date.now().toString().slice(-6)}`;
+
+        // Show desktop notification
+        await showOrderNotification({
+          customerName: customer.name,
+          totalAmount,
+          itemCount: items.length,
+          orderId: orderRef.key,
+        });
+
+        // Send email notification
+        await sendEmailNotification({
+          orderId: orderRef.key,
+          orderNumber,
+          customerName: customer.name,
+          customerPhone: customer.phone,
+          customerAddress: customer.address,
+          orderItems: items,
+          totalAmount,
+          orderNotes: notes,
+          restaurantName: brand?.name || "Chef",
+        });
+
         await fetchOrders(); // Refresh orders list and update analytics
         return { success: true, orderId: orderRef.key };
       } else {
