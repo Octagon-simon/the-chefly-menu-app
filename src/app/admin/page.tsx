@@ -406,7 +406,7 @@ export default function AdminPage() {
                   Subscription Expired
                 </div>
               )}
-               <NotificationSetup />
+              <NotificationSetup />
               <a
                 href={menuUrl}
                 target="_blank"
@@ -447,7 +447,7 @@ export default function AdminPage() {
                     Subscription Expired
                   </div>
                 )}
-                 <NotificationSetup />
+                <NotificationSetup />
                 <a
                   href={menuUrl}
                   target="_blank"
@@ -974,7 +974,16 @@ export default function AdminPage() {
                             className="flex justify-between items-center text-sm"
                           >
                             <span>
-                              {item.name} x{item.quantity}
+                              {item.name} x{item.quantity}{" "}
+                              {item.selectedCombos &&
+                                item.selectedCombos.length > 0 && (
+                                  <p className="text-xs mt-1 text-gray-600">
+                                    Combos:{" "}
+                                    {item.selectedCombos
+                                      .map((c) => c.name)
+                                      .join(", ")}
+                                  </p>
+                                )}
                             </span>
                             <span className="font-medium">
                               ₦{item.totalPrice.toLocaleString()}

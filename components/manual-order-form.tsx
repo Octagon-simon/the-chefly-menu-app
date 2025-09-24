@@ -24,14 +24,14 @@ interface ManualOrderFormProps {
     notes?: string
   ) => Promise<void>;
   onClose: () => void;
-  userId: string
+  userId: string;
 }
 
 export const ManualOrderForm = ({
   menuItems,
   onSubmit,
   onClose,
-  userId
+  userId,
 }: ManualOrderFormProps) => {
   const [customer, setCustomer] = useState<Customer>({
     name: "",
@@ -42,9 +42,21 @@ export const ManualOrderForm = ({
   const [notes, setNotes] = useState("");
   const [loading, setLoading] = useState(false);
 
-  const addItemToOrder = (menuItem: MenuItem) => {
+  const addItemToOrder = (
+    menuItem: MenuItem,
+    selectedCombos: any[] = [],
+    itemQuantity = 1
+  ) => {
+    const comboPrice = selectedCombos.reduce(
+      (sum, combo) => sum + (combo.price || 0),
+      0
+    );
+    const totalItemPrice = menuItem.price + comboPrice;
+
     const existingItem = orderItems.find(
-      (item) => item.menuItemId === menuItem.id
+      (item) =>
+        item.menuItemId === menuItem.id &&
+        JSON.stringify(item.selectedCombos) === JSON.stringify(selectedCombos)
     );
 
     if (existingItem) {
@@ -53,8 +65,8 @@ export const ManualOrderForm = ({
           item.menuItemId === menuItem.id
             ? {
                 ...item,
-                quantity: item.quantity + 1,
-                totalPrice: (item.quantity + 1) * item.price,
+                quantity: item.quantity + itemQuantity,
+                totalPrice: (item.quantity + itemQuantity) * totalItemPrice,
               }
             : item
         )
@@ -64,9 +76,14 @@ export const ManualOrderForm = ({
         id: `${menuItem.id}-${Date.now()}`,
         menuItemId: menuItem.id,
         name: menuItem.name,
-        price: menuItem.price,
-        quantity: 1,
-        totalPrice: menuItem.price,
+        selectedCombos: selectedCombos.map((combo) => ({
+          id: combo.id,
+          name: combo.name,
+          price: combo.price || 0,
+        })),
+        price: totalItemPrice,
+        quantity: itemQuantity,
+        totalPrice: totalItemPrice * itemQuantity,
       };
       setOrderItems((prev) => [...prev, newOrderItem]);
     }
@@ -204,6 +221,15 @@ export const ManualOrderForm = ({
                     >
                       <div className="flex-1">
                         <h4 className="font-medium text-sm">{item.name}</h4>
+                        {item.selectedCombos &&
+                          item.selectedCombos.length > 0 && (
+                            <p className="text-xs text-gray-600">
+                              Combos:{" "}
+                              {item.selectedCombos
+                                .map((c) => c.name)
+                                .join(", ")}
+                            </p>
+                          )}
                         <p className="text-xs text-gray-600">
                           {formatPrice(item.price)} each
                         </p>

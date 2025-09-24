@@ -64,6 +64,7 @@ export const SearchableMenuSelector = ({
   const handleConfirmItem = () => {
     if (selectedItem) {
       onAddItem(selectedItem, selectedCombos, quantity);
+      console.log(selectedItem, selectedCombos, quantity)
       setSelectedItem(null);
       setSelectedCombos([]);
       setQuantity(1);

@@ -143,7 +143,7 @@ export const useOrders = () => {
     customer: Customer,
     items: OrderItem[],
     notes?: string,
-    sendEmail: boolean = true //if order is coming from the admin dashboard, then don't send email
+    sendNotification: boolean = true //if order is coming from the admin dashboard, then don't send any notifcation
   ): Promise<{ success: boolean; error?: string; orderId?: string }> => {
     if (!userId) {
       return { success: false, error: "UserId not available" };
@@ -175,16 +175,16 @@ export const useOrders = () => {
       if (orderRef.key) {
         const orderNumber = `ORD-${Date.now().toString().slice(-6)}`;
 
-        // Show desktop notification
-        await showOrderNotification({
-          customerName: customer.name,
-          totalAmount,
-          itemCount: items.length,
-          orderId: orderRef.key,
-        });
+        if (sendNotification) {
+          // Show desktop notification
+          await showOrderNotification({
+            customerName: customer.name,
+            totalAmount,
+            itemCount: items.length,
+            orderId: orderRef.key,
+          });
 
-        // Send email notification
-        if (sendEmail) {
+          // Send email notification
           await sendEmailNotification({
             orderId: orderRef.key,
             orderNumber,
@@ -195,7 +195,7 @@ export const useOrders = () => {
             totalAmount,
             orderNotes: notes,
             restaurantName: brand?.name || "Chef",
-            userId
+            userId,
           });
         }
 

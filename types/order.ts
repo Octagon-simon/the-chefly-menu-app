@@ -7,7 +7,7 @@ export interface OrderItem {
   selectedCombos?: {
     id: string;
     name: string;
-    price: number;
+    price?: number;
   }[];
   totalPrice: number;
 }
