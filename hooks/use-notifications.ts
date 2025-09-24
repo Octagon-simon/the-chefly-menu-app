@@ -126,12 +126,8 @@ export const useNotifications = () => {
       totalAmount: number;
       orderNotes?: string;
       restaurantName: string;
+      userId: string;
     }) => {
-      if (!user?.email) {
-        console.error("No user email available for notification");
-        return { success: false, error: "No user email" };
-      }
-
       try {
         const response = await fetch("/api/send-email", {
           method: "POST",
@@ -139,7 +135,7 @@ export const useNotifications = () => {
             "Content-Type": "application/json",
           },
           body: JSON.stringify({
-            to: user.email,
+            userId: orderData.userId,
             subject: `🔔 New Order #${orderData.orderNumber} - ${orderData.customerName}`,
             template: "order-notification",
             variables: {
@@ -155,7 +151,9 @@ export const useNotifications = () => {
                 totalPrice: item.totalPrice.toLocaleString(),
               })),
               totalAmount: orderData.totalAmount.toLocaleString(),
-              adminUrl: `${window.location.origin}/admin`,
+              adminUrl: `${
+                process?.env?.NEXT_PUBLIC_APP_URL || window.location.origin
+              }/admin`,
               restaurantName: orderData.restaurantName,
             },
           }),

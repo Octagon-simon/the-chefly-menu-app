@@ -125,3 +125,20 @@ export const calculateTotalSubscriptionCost = (
   // always return a whole number
   return Math.round(totalPrice - (totalPrice * validDiscount) / 100);
 };
+
+export const getUser = async (userId: string): Promise<null | User> => {
+  try {
+    if (typeof userId === "undefined" || userId?.trim() === "")
+      throw new Error("Invalid userId");
+    const db = getDatabase();
+    const userRef = db.ref(`users/${userId}`);
+    const userSnap = await userRef.get();
+
+    if (!userSnap.exists()) throw new Error("User does not exist");
+
+    return userSnap.val() as User;
+  } catch (error) {
+    console.error(error);
+    return null;
+  }
+};

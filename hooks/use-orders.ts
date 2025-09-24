@@ -142,7 +142,8 @@ export const useOrders = () => {
     userId: string, //anyone can create orders and it is tied to the owner of the restaurant
     customer: Customer,
     items: OrderItem[],
-    notes?: string
+    notes?: string,
+    sendEmail: boolean = true //if order is coming from the admin dashboard, then don't send email
   ): Promise<{ success: boolean; error?: string; orderId?: string }> => {
     if (!userId) {
       return { success: false, error: "UserId not available" };
@@ -183,17 +184,20 @@ export const useOrders = () => {
         });
 
         // Send email notification
-        await sendEmailNotification({
-          orderId: orderRef.key,
-          orderNumber,
-          customerName: customer.name,
-          customerPhone: customer.phone,
-          customerAddress: customer.address,
-          orderItems: items,
-          totalAmount,
-          orderNotes: notes,
-          restaurantName: brand?.name || "Chef",
-        });
+        if (sendEmail) {
+          await sendEmailNotification({
+            orderId: orderRef.key,
+            orderNumber,
+            customerName: customer.name,
+            customerPhone: customer.phone,
+            customerAddress: customer.address,
+            orderItems: items,
+            totalAmount,
+            orderNotes: notes,
+            restaurantName: brand?.name || "Chef",
+            userId
+          });
+        }
 
         await fetchOrders(); // Refresh orders list and update analytics
         return { success: true, orderId: orderRef.key };

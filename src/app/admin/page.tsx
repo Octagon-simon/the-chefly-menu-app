@@ -285,7 +285,7 @@ export default function AdminPage() {
     items: any[],
     notes?: string
   ) => {
-    const result = await createOrder(userId, customer, items, notes);
+    const result = await createOrder(userId, customer, items, notes, false);
     if (result.success) {
       toast.success("Order created successfully!");
       setShowOrderForm(false);
