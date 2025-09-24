@@ -1,0 +1,105 @@
+{
+  "rules": {
+    "brands": {
+      ".indexOn": [
+        "userId"
+      ],
+      ".read": true,
+      "$brandId": {
+        ".write": "auth != null &&
+          (
+            (!data.exists() && newData.child('userId').val() === auth.uid) ||
+            (data.exists() && data.child('userId').val() === auth.uid)
+          )"
+      }
+    },
+    "categories": {
+      ".indexOn": [
+        "userId"
+      ],
+      ".read": true,
+      "$categoryId": {
+        ".write": "auth != null &&
+          (
+            (!data.exists() && newData.child('userId').val() === auth.uid) ||
+            (data.exists() && data.child('userId').val() === auth.uid)
+          )"
+      }
+    },
+    "menuItems": {
+      ".indexOn": [
+        "userId"
+      ],
+      ".read": true,
+      "$menuItemId": {
+        ".write": "auth != null &&
+          (
+            (!data.exists() && newData.child('userId').val() === auth.uid) ||
+            (data.exists() && data.child('userId').val() === auth.uid)
+          )"
+      }
+    },
+    "payments": {
+      ".indexOn": [
+        "userId"
+      ],
+      "$paymentId": {
+        ".read": "auth != null && data.child('userId').val() === auth.uid",
+        ".write": "auth != null &&
+          (
+            (!data.exists() && newData.child('userId').val() === auth.uid) ||
+            (data.exists() && data.child('userId').val() === auth.uid)
+          )"
+      }
+    },
+    "promos": {
+      ".read": true,
+      ".write": "auth != null && auth.token.admin === true"
+    },
+    "users": {
+      ".indexOn": [
+        "username"
+      ],
+      "$uid": {
+        ".read": "auth != null",
+        ".write": "auth != null && auth.uid === $uid"
+      }
+    },
+    "userPublic": {
+      ".indexOn": [
+        "username"
+      ],
+      ".read": true,
+      "$uid": {
+        ".write": "auth != null && auth.uid === $uid"
+      }
+    },
+    "metadata": {
+      ".indexOn": [
+        "userId"
+      ],
+      ".read": true,
+      "$metadataId": {
+        ".write": "auth != null && $metadataId === auth.uid"
+      }
+    },
+    "orders": {
+      ".indexOn": [
+        "userId"
+      ],
+      ".read": "auth != null", // allow reading orders collection
+      "$orderId": {
+        ".read": "auth != null && data.child('userId').val() === auth.uid",
+        ".write": "(!data.exists()) || (auth != null && data.child('userId').val() === auth.uid)"
+      }
+    },
+    "analytics": {
+      "orders": {
+        "$adminId": {
+          ".read": "auth != null && auth.uid === $adminId",
+          ".write": "auth != null && auth.uid === $adminId"
+        }
+      }
+    }
+  }
+}

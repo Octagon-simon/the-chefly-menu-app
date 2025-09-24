@@ -12,7 +12,7 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { CheckCircle, XCircle, ArrowRight, Crown } from "lucide-react";
-import { LoadingSpinner } from "@/components/loading-spinner";
+import { capitalizeFirstLetter } from "@/lib/utils";
 
 export default function PaymentCallbackPage() {
   const router = useRouter();
@@ -22,7 +22,6 @@ export default function PaymentCallbackPage() {
     "loading"
   );
   const [paymentDetails, setPaymentDetails] = useState<any>(null);
-
   useEffect(() => {
     const verifyPayment = async () => {
       const reference = searchParams.get("reference");
@@ -145,12 +144,20 @@ export default function PaymentCallbackPage() {
                 </h3>
               </div>
               <ul className="text-sm text-orange-800 space-y-1">
-                <li>✅ Unlimited menu items</li>
-                <li>✅ Multiple images per item</li>
-                <li>✅ Custom branding</li>
-                <li>✅ QR code generation</li>
-                <li>✅ Priority support</li>
-                <li>✅ Installable menu app</li>
+                {(
+                  paymentDetails?.selectedFeatures || [
+                    "unlimited_menu_items",
+                    "custom_branded_url",
+                    "custom_brand_colors_logo",
+                    "multiple_images_per_item",
+                    "remove_branding",
+                    "month_end_analytics",
+                  ]
+                ).map((val: string, ind: number) => (
+                  <li key={ind}>
+                    ✅ {capitalizeFirstLetter(val?.replaceAll("_", " "))}
+                  </li>
+                ))}
               </ul>
             </div>
 

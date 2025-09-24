@@ -50,6 +50,7 @@ export async function POST(request: NextRequest) {
         amount: verification.data.amount,
         reference: verification.data.reference,
         paid_at: verification.data.paid_at,
+        selectedFeatures,
       },
     });
   } catch (error) {

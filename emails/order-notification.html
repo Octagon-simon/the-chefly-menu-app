@@ -37,7 +37,7 @@
                 </p>
               </div>
 
-              Customer Information
+              <!-- Customer Information -->
               <div style="margin-bottom: 30px;">
                 <h3
                   style="color: #1a1a1a; font-size: 18px; font-weight: 600; margin: 0 0 15px 0; border-bottom: 2px solid #E44D26; padding-bottom: 5px;">
@@ -91,9 +91,9 @@
                     <tr>
                       <td style="color: #1a1a1a; border-bottom: 1px solid #f1f5f9;">
                         <strong>{{name}}</strong>
-                        {{#if combos}}
+                        {{#if selectedCombos}}
                         <div style="font-size: 14px; color: #6b7280; margin-top: 4px;">
-                          {{#each combos}}
+                          {{#each selectedCombos}}
                           + {{name}} (+₦{{price}}){{#unless @last}}, {{/unless}}
                           {{/each}}
                         </div>
@@ -121,7 +121,7 @@
               </div>
 
               <!-- Action Buttons -->
-              <div style="text-align: center; margin: 30px 0;">
+              <div style="justify-content: center; display: flex; margin: 30px 0; gap: 10px;">
                 <a href="{{adminUrl}}"
                   style="display: inline-block; background-color: #E44D26; color: #ffffff; text-decoration: none; padding: 15px 30px; border-radius: 8px; font-weight: 600; font-size: 16px; box-shadow: 0 4px 6px rgba(228, 77, 38, 0.3); margin: 0 10px;">
                   View in Admin Panel

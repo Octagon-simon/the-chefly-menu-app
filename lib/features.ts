@@ -28,7 +28,7 @@ export const CORE_PRO_FEATURES: Feature[] = [
     category: "core",
   },
   {
-    id: "custom_brand_colors_logo",
+    id: "custom_brand_colors_and_logo",
     name: "Custom Brand Colors & Logo",
     description: "Customize your menu with your brand colors and logo",
     price: 0,
@@ -69,8 +69,8 @@ export const ADDON_FEATURES: Feature[] = [
   {
     id: "manual_ordering",
     name: "Manual Ordering",
-    description: "Accept and manage orders directly through your dashboard",
-    price: 200000, // ₦2,000 in kobo
+    description: "Accept and manage orders directly through your dashboard. (This comes with unlimited desktop & email order notifications)",
+    price: 300000, // ₦3,000 in kobo
     category: "addon",
   },
 ];
