@@ -135,12 +135,13 @@ export const useOrders = () => {
   };
 
   const createOrder = async (
+    userId: string, //anyone can create orders and it is tied to the owner of the restaurant
     customer: Customer,
     items: OrderItem[],
     notes?: string
   ): Promise<{ success: boolean; error?: string; orderId?: string }> => {
-    if (!user?.id) {
-      return { success: false, error: "User not authenticated" };
+    if (!userId) {
+      return { success: false, error: "UserId not available" };
     }
 
     try {
@@ -148,7 +149,7 @@ export const useOrders = () => {
       const now = new Date().toISOString();
 
       const newOrder: Omit<Order, "id"> = {
-        userId: user.id,
+        userId,
         customer,
         items,
         totalAmount,

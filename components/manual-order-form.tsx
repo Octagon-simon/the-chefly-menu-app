@@ -18,17 +18,20 @@ import { toast } from "sonner";
 interface ManualOrderFormProps {
   menuItems: MenuItem[];
   onSubmit: (
+    userId: string,
     customer: Customer,
     items: OrderItem[],
     notes?: string
   ) => Promise<void>;
   onClose: () => void;
+  userId: string
 }
 
 export const ManualOrderForm = ({
   menuItems,
   onSubmit,
   onClose,
+  userId
 }: ManualOrderFormProps) => {
   const [customer, setCustomer] = useState<Customer>({
     name: "",
@@ -115,7 +118,7 @@ export const ManualOrderForm = ({
 
     setLoading(true);
     try {
-      await onSubmit(customer, orderItems, notes.trim() || undefined);
+      await onSubmit(userId, customer, orderItems, notes.trim() || undefined);
       toast.success("Order created successfully!");
       onClose();
     } catch (error) {

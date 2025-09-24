@@ -279,11 +279,12 @@ export default function AdminPage() {
   };
 
   const handleCreateOrder = async (
+    userId: string,
     customer: any,
     items: any[],
     notes?: string
   ) => {
-    const result = await createOrder(customer, items, notes);
+    const result = await createOrder(userId, customer, items, notes);
     if (result.success) {
       toast.success("Order created successfully!");
       setShowOrderForm(false);
@@ -1243,6 +1244,7 @@ export default function AdminPage() {
           menuItems={menuItems}
           onSubmit={handleCreateOrder}
           onClose={() => setShowOrderForm(false)}
+          userId={user.id}
         />
       )}
     </div>

@@ -48,6 +48,7 @@ export interface CartModalProps {
   brand: any;
   showCart: boolean;
   setShowCart: (x: boolean) => void;
+  userId: string
 }
 
 export interface MenuItemFormProps {

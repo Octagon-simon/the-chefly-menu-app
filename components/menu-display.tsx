@@ -649,6 +649,7 @@ export const MenuDisplay = ({
           brand={brand}
           showCart={showCart}
           setShowCart={setShowCart}
+          userId={user.id}
         />
       )}
 
@@ -943,6 +944,7 @@ const CartModal = ({
   userFeatures,
   showCart,
   setShowCart,
+  userId
 }: CartModalProps) => {
   const [showManualOrderForm, setShowManualOrderForm] = useState(false);
   const [customerInfo, setCustomerInfo] = useState({
@@ -1018,6 +1020,7 @@ const CartModal = ({
       };
 
       const result = await createOrder(
+        userId,
         customer,
         orderItems,
         customerInfo.notes.trim() || undefined
@@ -1234,7 +1237,7 @@ const CartModal = ({
                 {cart.map((item) => (
                   <div
                     key={item.id}
-                    className="flex items-center justify-between p-3 bg-gray-50 rounded-lg"
+                    className="flex items-center gap-4 justify-between p-3 bg-gray-50 rounded-lg"
                   >
                     <div className="flex-1">
                       <h4 className="font-medium">{item.name}</h4>
@@ -1278,7 +1281,7 @@ const CartModal = ({
                       </Button>
                     </div>
                     <div
-                      className="text-sm font-semibold ml-4"
+                      className="text-sm font-semibold"
                       style={{ color: secondaryColor }}
                     >
                       {formatPrice(item.totalPrice)}
