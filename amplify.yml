@@ -8,7 +8,7 @@ frontend:
         - "npm install --frozen-lockfile"
         - echo "Creating .env.production and injecting server-only envs"
         # Only server envs
-        - env | grep -E '^(PAYSTACK_SECRET_KEY|FIREBASE_CLIENT_EMAIL|RESEND_API_KEY|FIREBASE_PRIVATE_KEY|FIREBASE_DATABASE_URL)=' > .env.production || true
+        - env | grep -E '^(PAYSTACK_SECRET_KEY|FIREBASE_CLIENT_EMAIL|RESEND_API_KEY|FIREBASE_PRIVATE_KEY|FIREBASE_DATABASE_URL|FIREBASE_PROJECT_ID|APP_URL)=' > .env.production || true
     build:
       commands:
         - "npm run build"

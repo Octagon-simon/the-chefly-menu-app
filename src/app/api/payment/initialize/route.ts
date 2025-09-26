@@ -7,11 +7,11 @@ import { getPaystack } from "../../lib/paystack";
 if (!getApps().length) {
   initializeApp({
     credential: cert({
-      projectId: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID,
+      projectId: process.env.FIREBASE_PROJECT_ID,
       clientEmail: process.env.FIREBASE_CLIENT_EMAIL,
       privateKey: process.env.FIREBASE_PRIVATE_KEY?.replace(/\\n/g, "\n"),
     }),
-    databaseURL: process.env.NEXT_PUBLIC_FIREBASE_DATABASE_URL,
+    databaseURL: process.env.FIREBASE_DATABASE_URL,
   });
 }
 
@@ -49,7 +49,7 @@ export async function POST(request: NextRequest) {
     }
     const paystack = getPaystack();
     const reference = paystack.generateReference(userId);
-    const callbackUrl = `${process.env.NEXT_PUBLIC_APP_URL}/payment/callback`;
+    const callbackUrl = `${process.env.APP_URL}/payment/callback`;
 
     // Initialize payment with Paystack
     const paymentData = await paystack.initializePayment({
