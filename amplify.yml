@@ -3,25 +3,20 @@ frontend:
   phases:
     preBuild:
       commands:
-        - 'nvm use 20'
-        - 'node -v'
-        - 'npm install --frozen-lockfile'
-        - echo "--- Debugging: Printing all environment variables ---"
-        - env
-        - echo "--- End of environment variables ---"
-        - echo "Creating .env.production and injecting all necessary envs"
-        # Create and inject all NEXT_PUBLIC_ variables. || true prevents failure.
-        - env | grep -E '^NEXT_PUBLIC_=' > .env.production || true
-        # Append all server-only envs. || true prevents failure.
-        - env | grep -E '^(PAYSTACK_SECRET_KEY|FIREBASE_CLIENT_EMAIL|RESEND_API_KEY|FIREBASE_PRIVATE_KEY|FIREBASE_DATABASE_URL)=' >> .env.production || true
+        - "nvm use 20"
+        - "node -v"
+        - "npm install --frozen-lockfile"
+        - echo "Creating .env.production and injecting server-only envs"
+        # Only server envs
+        - env | grep -E '^(PAYSTACK_SECRET_KEY|FIREBASE_CLIENT_EMAIL|RESEND_API_KEY|FIREBASE_PRIVATE_KEY|FIREBASE_DATABASE_URL)=' > .env.production || true
     build:
       commands:
-        - npm run build
+        - "npm run build"
   artifacts:
     baseDirectory: .next
     files:
-      - '**/*'
+      - "**/*"
   cache:
     paths:
-      - '.next/cache/**/*'
-      - 'node_modules/**/*'
+      - ".next/cache/**/*"
+      - "node_modules/**/*"
