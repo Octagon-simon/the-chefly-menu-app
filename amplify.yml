@@ -6,6 +6,11 @@ frontend:
         - 'nvm use 20'
         - 'node -v'
         - 'npm install --frozen-lockfile'
+        - echo "Creating .env.production and injecting all necessary envs"
+        # Create and inject all NEXT_PUBLIC_ variables (first grep uses single >)
+        - env | grep -E '^NEXT_PUBLIC_=' > .env.production
+        # Append all server-only envs (subsequent greps use double >>)
+        - env | grep -E '^(PAYSTACK_SECRET_KEY|FIREBASE_CLIENT_EMAIL|RESEND_API_KEY|FIREBASE_PRIVATE_KEY|FIREBASE_DATABASE_URL)=' >> .env.production || true
     build:
       commands:
         - 'npm run build'
