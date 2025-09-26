@@ -29,7 +29,7 @@ interface PaystackVerifyResponse {
       plan: string;
       email: string;
       isRenewal?: boolean;
-      remainingDays?: number
+      remainingDays?: number;
     };
     customer: {
       id: number;
@@ -59,7 +59,8 @@ interface PaystackVerifyResponse {
   };
 }
 
-export class PaystackService {
+let paystack: PaystackService | null;
+class PaystackService {
   private secretKey: string;
   private baseUrl = "https://api.paystack.co";
 
@@ -102,7 +103,7 @@ export class PaystackService {
       originalAmount?: number;
       finalAmount?: number;
       isRenewal?: boolean;
-      remainingDays?: number
+      remainingDays?: number;
     };
   }): Promise<PaystackInitializeResponse> {
     return this.makeRequest("/transaction/initialize", {
@@ -133,4 +134,9 @@ export class PaystackService {
   }
 }
 
-export const paystack = new PaystackService();
+export function getPaystack() {
+  if (!paystack) {
+    paystack = new PaystackService();
+  }
+  return paystack;
+}

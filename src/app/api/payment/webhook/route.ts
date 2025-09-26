@@ -1,6 +1,6 @@
 import { type NextRequest, NextResponse } from "next/server";
 import { upgradeUserToPro } from "../../lib/subscription";
-import { paystack } from "../../lib/paystack";
+import { getPaystack } from "../../lib/paystack";
 
 export async function POST(request: NextRequest) {
   try {
@@ -11,6 +11,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Missing signature" }, { status: 400 });
     }
 
+    const paystack = getPaystack();
     // Verify webhook signature
     const isValid = await paystack.verifyWebhookSignature(body, signature);
     if (!isValid) {

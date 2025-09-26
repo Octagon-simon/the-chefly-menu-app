@@ -1,7 +1,7 @@
 import { type NextRequest, NextResponse } from "next/server";
 import { auth } from "firebase-admin";
 import { initializeApp, getApps, cert } from "firebase-admin/app";
-import { paystack } from "../../lib/paystack";
+import { getPaystack } from "../../lib/paystack";
 
 // Initialize Firebase Admin
 if (!getApps().length) {
@@ -47,7 +47,7 @@ export async function POST(request: NextRequest) {
     if (promoCode && discount > 0) {
       finalAmount = baseAmount - (baseAmount * discount) / 100;
     }
-
+    const paystack = getPaystack();
     const reference = paystack.generateReference(userId);
     const callbackUrl = `${process.env.NEXT_PUBLIC_APP_URL}/payment/callback`;
 

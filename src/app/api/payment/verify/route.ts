@@ -1,5 +1,5 @@
 import { type NextRequest, NextResponse } from "next/server";
-import { paystack } from "../../lib/paystack";
+import { getPaystack } from "../../lib/paystack";
 import { upgradeUserToPro } from "../../lib/subscription";
 
 export async function POST(request: NextRequest) {
@@ -12,7 +12,7 @@ export async function POST(request: NextRequest) {
         { status: 400 }
       );
     }
-
+    const paystack = getPaystack();
     // Verify payment with Paystack
     const verification = await paystack.verifyPayment(reference);
 
